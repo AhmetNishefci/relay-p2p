@@ -169,8 +169,10 @@ after admission. Bare rejects Viewer mutations; disabled/absent controls are onl
 presentation. Participant names and device keys are not verified human identities.
 
 **Trade-offs.** Invitations can be forwarded. There is no owner/admin model, per-entry
-ACL, or identity verification. Canceling an invitation closes its local record; it
-does not revoke already granted access or prove other peers observed cancellation.
+ACL, or identity verification. Invitations are shared records: another Contributor
+can reuse or cancel them. Autopass selects a locally known invitation for cancellation;
+concurrent/stale invitations may remain. Cancellation does not revoke already granted
+access or prove other peers observed it.
 The API roster may omit the original creator and is not an online indicator.
 
 **Change the decision when** verified identity, finer access control, participant

@@ -282,9 +282,10 @@ export function PairingPanel({
             }
           />
           <Text style={ui.caption}>
-            Leaving this screen does not cancel an invitation. Canceling closes this device’s
-            invitation. Existing access remains, and other peers may not have received the
-            cancellation yet.
+            Invitations are shared. Other Contributors can replace or cancel them. Leaving this
+            screen keeps them active. Cancel affects the invitation currently known here; others may
+            remain. Existing participant access is unchanged, and other devices may not have
+            received the cancellation.
           </Text>
         </View>
       ) : (

@@ -53,6 +53,11 @@ the assessment's explicit exclusion of fully AI-coded submissions.
 7. Reviewer transcripts were only available in ignored local storage. A checked-in,
    integrity-manifested redacted export and source exporter now provide reviewer access.
    Original records are not modified or falsely described as public/unredacted.
+8. Invitation copy implied device ownership. An isolated real-peer probe confirmed
+   Contributor B reused A's invitation and canceled it, with A observing removal.
+   UI/README now explain shared invitation records and the limits of canceling the
+   locally known invitation; concurrent/stale invitations may remain. No invitation
+   owner model, global revocation guarantee or new operation was added.
 
 ## Security, trust and bounded guarantees
 
@@ -97,7 +102,8 @@ An isolated local clone at commit `eb44007` was installed from its own lockfile 
 built from generated native projects. It shared the host's SDK/npm/Gradle caches:
 this verifies a fresh worktree, not a fresh operating system. The committed Pear
 upgrade identifier worked unchanged; no new `pear touch` or private signer was needed.
-Later source changes affect only tests and documentation/transcript evidence.
+Later source changes affect tests, invitation wording and documentation/transcript
+evidence; storage, IPC, permissions and record schemas are unchanged.
 
 | Executed check                 | Actual result / private evidence                                                                                                                                                                     |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -158,7 +164,7 @@ submission message, npm publishing or Pear deployment was performed in this audi
 
 ## Changed-file inventory
 
-- Lifecycle/tests: `src/worker/client.js`, `workers/library.js`,
+- Lifecycle/UI/tests: `src/worker/client.js`, `workers/library.js`, `src/PairingPanel.tsx`,
   `tests/client.test.js`, `tests/pairing.test.js`, `tests/handoff.test.js`.
 - Branding: `app.json`, `assets/icon.png`, `assets/adaptive-icon.png`,
   `assets/splash-icon.png`, `assets/favicon.png`, `assets/relay-mark.svg`,
