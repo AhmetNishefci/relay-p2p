@@ -2,7 +2,8 @@
 > See [Android baseline setup and evidence](docs/PHASE1.md) and [AI assistance disclosure](docs/AI_USAGE.md).
 > [Phase 2](docs/PHASE2.md) adds the persistent Autopass/IPC foundation and a minimal verification UI.
 > [Phase 3](docs/PHASE3.md) adds Contributor/Viewer pairing and verified independent-peer replication.
-> Acknowledgment handoffs and final Relay design are not implemented yet.
+> [Phase 4](docs/PHASE4.md) adds explicit peer acknowledgment records and their trust limits.
+> Final Relay visual design is not implemented yet.
 
 # hello-pear-react-native <a name="hello-pear-react-native"></a>
 
@@ -491,8 +492,9 @@ Apache-2.0
 1. **Sync state.** Completed local writes say “Saved on this device.” An update event
    does not establish remote delivery. We chose this over a generic “synced” badge
    because Autopass exposes no per-entry delivery acknowledgment. This sacrifices a
-   simple global status. Explicit application acknowledgments are the next milestone,
-   not an implemented feature yet. A reliable delivery API or evidence that users
+   simple global status. Explicit acknowledgment records are implemented as a
+   separate replicated action; they are not delivery/read receipts or verified
+   identities. See [Phase 4](docs/PHASE4.md) for tested behavior and trust limits. A reliable delivery API or evidence that users
    need a different distinction would change this decision.
 2. **Pairing and trust.** Invite possession grants access; the inviter selects
    Contributor or Viewer, and the joined peer displays its actual capability.

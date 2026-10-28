@@ -53,6 +53,20 @@ cancellation races, invitation trust, and actual permission enforcement remain
 outstanding. Pairing verification does not establish compliance with the prohibition
 on fully AI-coded submissions; candidate-led product work is still required.
 
+## Phase 4: acknowledgment handoffs
+
+The candidate authorized the handoff milestone. Codex proposed/generated the separate
+acknowledgment schema, worker-derived identity/idempotence/existence checks, snapshot
+extension, minimal acknowledgment UI, focused tests, and documentation. It inspected
+Autopass's shared-key write behavior and verified a controlled cross-writer overwrite
+in isolated test stores. This is AI-generated implementation, not candidate-authored
+code. No candidate review or substantive edits are claimed.
+
+Android debug checks use the existing RN client and Bare IPC. Release UI checks use
+actual controls; failed local UI-selector/startup attempts are preserved and are not
+reported as passed tests. Candidate review/modification of acknowledgment meaning,
+trust, idempotence, retention, and state language remain required before submission.
+
 ## Authentic records
 
 Original Codex session identifier: `01a18158-3cb1-7e70-a804-2b4d3c33e634`.

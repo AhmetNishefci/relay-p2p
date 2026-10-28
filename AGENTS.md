@@ -75,7 +75,7 @@ versions changed. Never use broad upgrades to bypass native compatibility proble
   `'false'` enables updates
 - One FramedStream carries the original Pear UTF-8 control strings and versioned JSON
   application requests/responses/events. See `shared/protocol.js` / `.d.ts` and
-  `docs/PHASE2.md` and `docs/PHASE3.md`. Unknown or malformed application frames receive structured errors;
+  `docs/PHASE2.md`, `docs/PHASE3.md`, and `docs/PHASE4.md`. Unknown or malformed application frames receive structured errors;
   entry bodies and raw internal errors are never logged as application requests.
 - One version drives everything: `package.json#version` → `app.config.js` → Expo →
   iOS `CFBundleShortVersionString` / Android `versionName` → the native boot comparison,

@@ -44,6 +44,12 @@ facts.
   Startup awaits `pass.ready()`. Requests are validated in `shared/protocol.js` and
   dispatched by `workers/requests.js`; mutations and list snapshots are serialized.
   `get()` returns `{ value, file }` or null; `list()` is consumed with `for await`.
+- Acknowledgments are separate `ack:<entry-id>:<writer-key>` records. Bare derives the
+  local key and rejects Viewer writes. The single entry snapshot includes validated
+  acknowledgments/local key; existing update refreshes cover both record kinds.
+  Deleted-entry acknowledgments are retained but hidden. Shared Autopass writers
+  can overwrite each other's keys, so these are record claims, not authenticated
+  receipts. See `docs/PHASE4.md` before changing handoff semantics.
 - `bare-pack` runs with `--linked` and four `--host` targets, so native addons resolve
   to `linked:` specifiers that `react-native-bare-kit` has prelinked as xcframeworks /
   `.so`s. Adding a worker dependency with a native addon that BareKit does not already
