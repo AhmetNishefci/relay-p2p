@@ -40,9 +40,10 @@ export type WorkerStatus = {
 export type Participant = { key: string; name: string | null; readOnly: boolean; isLocal: boolean }
 export type Operations = {
   'attachments.stage': {
-    payload: FileMetadata
+    payload: Omit<FileMetadata, 'digest'> & { digest?: string }
     result: { handle: string; entryId: string; uri: string; expiresAt: number }
   }
+  'attachments.seal': { payload: { handle: string }; result: FileMetadata }
   'attachments.release': { payload: { handle: string }; result: { released: true } }
   'attachments.get': {
     payload: { entryId: string }

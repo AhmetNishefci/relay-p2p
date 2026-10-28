@@ -44,10 +44,7 @@ class FileStaging {
     return path.join(this.root, token)
   }
 
-  async read(token, expectedDigest) {
-    if (typeof expectedDigest !== 'string' || !DIGEST.test(expectedDigest)) {
-      throw failure('INVALID_DIGEST')
-    }
+  async readBytes(token) {
     const directory = this.directory(token)
     if ((await fs.lstat(directory)).isSymbolicLink()) throw failure('UNSAFE_STAGING')
     const filename = path.join(directory, 'input.bin')
@@ -75,8 +72,15 @@ class FileStaging {
     } finally {
       await handle.close()
     }
-    const digest = crypto.hash(bytes).toString('hex')
-    if (digest !== expectedDigest) throw failure('INTEGRITY_MISMATCH')
+    return bytes
+  }
+
+  async read(token, expectedDigest) {
+    if (typeof expectedDigest !== 'string' || !DIGEST.test(expectedDigest)) {
+      throw failure('INVALID_DIGEST')
+    }
+    const bytes = await this.readBytes(token)
+    if (crypto.hash(bytes).toString('hex') !== expectedDigest) throw failure('INTEGRITY_MISMATCH')
     return bytes
   }
 

@@ -112,11 +112,15 @@ runtime compatibility. The original vector mark and regeneration script are in
    **Copy text** on Android or a trusted app. Possession grants access.
 3. On the other device, paste the invitation and join. Keep both apps foregrounded
    and connected. Device labels are optional and unverified.
-4. Contributors use **New entry**, save locally, and open an entry to **Acknowledge**.
-   Viewers can read entries/acknowledgments but cannot modify them or invite peers.
-5. Updates refresh automatically; pull-to-refresh requests another local snapshot.
+4. Contributors use **New entry** and optionally **Attach a file**. Choose one JPEG,
+   PNG, PDF or plain-text document, up to **1 MiB**. Review filename/size, remove it
+   if needed, then save. Saving is confirmed only after the worker completes it.
+5. Open an entry to **Acknowledge**, or use **Open or share** on its attachment.
+   Relay verifies a local copy and opens Android's sharing sheet. Viewers can read
+   and share attachments but cannot add/remove entries, acknowledge or invite peers.
+6. Updates refresh automatically; pull-to-refresh requests another local snapshot.
    Removing an entry requires confirmation and does not promise remote erasure.
-6. Open **Notebook activity** for current entry and acknowledgment records. Filter
+7. Open **Notebook activity** for current entry and acknowledgment records. Filter
    **Acknowledgments** or **No acknowledgment**, then tap a row to open its entry.
    Back returns to the same filter. Device-recorded times are not delivery/read
    events; removed entries disappear. This is a current view, not permanent history.
@@ -165,7 +169,7 @@ want an explicit handoff rather than an inferred transport status.
 **Trade-offs.** Users must take an action; there is no global sync badge. These are
 mutable claims: another Contributor can overwrite any acknowledgment key. Keys are
 not human identities, timestamps do not resolve conflicts, and records bind to entry
-IDs rather than content revisions. Removed-entry acknowledgments remain stored but
+IDs rather than text or attachment revisions. Removed-entry acknowledgments remain stored but
 are hidden from the view. No remote deletion guarantee is made.
 
 **Change the decision when** authenticated per-entry receipt APIs become available,
@@ -200,13 +204,22 @@ See [pairing behavior and tests](docs/PHASE3.md).
 
 ## Limits and security
 
-- One active notebook per installation. No editor for existing entries or attachment
-  selection/opening UI. The worker supports one attachment per entry, at most **1 MiB**,
-  with JPEG, PNG, PDF and plain-text MIME labels. Filename/MIME validation is not content
-  authentication or malware scanning. Backend operations and verification are documented
-  in [Phase 11B.1](docs/PHASE11B1.md); ordinary app entry creation is unchanged. Binary
-  records are retained after entry removal or partial saves; aggregate storage quotas
-  and replicated garbage collection are not implemented.
+- One active notebook per installation; no editor for saved entries. Each entry may
+  contain one attachment, at most **1,048,576 bytes**. JPEG, PNG, PDF and plain text are
+  supported. Filename/MIME checks do not authenticate file format or scan for malware.
+- Files are stored as separate Autopass records and replicate with the notebook.
+  Ordinary refreshes read descriptors, not file buffers. **Open or share** verifies
+  bytes in Bare and prepares a native file URI; it is not a delivery/read receipt.
+  Binary records remain after entry removal or partial saves. No aggregate storage
+  quota or replicated garbage collection is implemented.
+- Picker source files are copied natively into private cache; no file bytes or base64
+  cross JSON IPC or need to be loaded into React Native memory. Bare derives the
+  BLAKE2b-256 digest. Provider-reported size is checked before copying and checked
+  again afterward; unknown sizes are rejected. A timeout cannot cancel native copying.
+- Worker temporary handles expire after two minutes. Share copies are retained so
+  receiving apps can read their URI after the chooser closes; copies older than 24
+  hours are eligible for cleanup on the next app launch. Android may clear cache sooner.
+  Sharing can give another app a retained copy; Relay cannot revoke it.
 - Snapshots are bounded to 200 entries and 1,000 valid acknowledgment records
   (including retained orphans), with a 1,500,000-character normalized budget. JSON
   IPC also has a 4,600,000-byte ceiling that preserves these supported sizes.
@@ -230,4 +243,6 @@ This assessment does not require publishing npm packages or Pear OTA updates.
 
 Attachment architecture prerequisites are documented in [Phase 11A](docs/PHASE11A.md).
 The [backend milestone](docs/PHASE11B1.md) adds controlled staging and validated P2P
-binary records. It does not add a user-facing attachment workflow.
+binary records. [Attachment UI and native QA](docs/PHASE11B2.md) document the complete
+Android picker/share workflow. These native dependencies require rebuilding and
+installing the APK; do not send this JavaScript over Pear OTA to an older binary.

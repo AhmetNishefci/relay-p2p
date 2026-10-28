@@ -1,5 +1,5 @@
 const b4a = require('b4a')
-const { isFileMetadata, isAttachment, isHandle } = require('./attachment')
+const { isFileMetadata, isSelectionMetadata, isAttachment, isHandle } = require('./attachment')
 
 const VERSION = 1
 const MAX_MESSAGE_LENGTH = 2_000_000
@@ -85,10 +85,14 @@ function validateRequest(value) {
       }
       break
     case 'attachments.stage':
-      if (fields(payload, ['filename', 'mimeType', 'size', 'digest']) && isFileMetadata(payload)) {
+      if (
+        fields(payload, ['filename', 'mimeType', 'size', 'digest']) &&
+        isSelectionMetadata(payload)
+      ) {
         return value
       }
       break
+    case 'attachments.seal':
     case 'attachments.release':
       if (fields(payload, ['handle']) && isHandle(payload.handle)) return value
       break
@@ -199,6 +203,7 @@ function isResult(op, value) {
       )
     )
   }
+  if (op === 'attachments.seal') return isFileMetadata(value)
   if (op === 'attachments.stage') {
     return (
       object(value) &&

@@ -19,6 +19,12 @@ function isFileMetadata(value) {
     digest(value.digest)
   )
 }
+function isSelectionMetadata(value) {
+  return (
+    object(value) &&
+    isFileMetadata({ ...value, digest: value.digest === undefined ? '0'.repeat(64) : value.digest })
+  )
+}
 function isAttachment(value, entryId) {
   return (
     isFileMetadata(value) &&
@@ -30,4 +36,10 @@ function isAttachment(value, entryId) {
     )
   )
 }
-module.exports = { MAX_ATTACHMENT_BYTES, isFileMetadata, isAttachment, isHandle: handle }
+module.exports = {
+  MAX_ATTACHMENT_BYTES,
+  isFileMetadata,
+  isSelectionMetadata,
+  isAttachment,
+  isHandle: handle
+}

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { reloadAppAsync } from 'expo-modules-core'
 import type { Entry, Acknowledgment, WorkerStatus } from '../shared/protocol'
 import { getWorkerSession } from './worker/runtime'
+import type { SelectedFile } from './attachment-selection'
+import { prepareAttachment, releaseAttachment } from './attachments'
 import { createListRefresher, isUnknownMutationError } from './worker/client'
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : 'Operation failed.')
 
@@ -137,21 +139,30 @@ export function useNotebook() {
     }
   }
 
-  async function addEntry(title: string, body: string) {
+  async function addEntry(title: string, body: string, selected?: SelectedFile | null) {
     if (locked.current || uncertain.current) return null
     locked.current = true
     setBusy(true)
     setError('')
     setFeedback('')
+    let publishing = false
+    let handle: string | null = null
     try {
-      const entry = await getWorkerSession().client.request('entries.add', { title, body })
+      if (selected) handle = (await prepareAttachment(selected)).handle
+      publishing = true
+      const client = getWorkerSession().client
+      const entry = handle
+        ? (await client.request('entries.addAttachment', { title, body, handle })).entry
+        : await client.request('entries.add', { title, body })
       setEntries((current) => [entry, ...current.filter((item) => item.id !== entry.id)])
       setFeedback('Saved on this device.')
       await refreshAfterWrite()
       return entry
     } catch (err) {
-      mutationFailed(err)
+      if (publishing) mutationFailed(err)
+      else setError(messageOf(err))
     } finally {
+      if (handle) void releaseAttachment(handle)
       locked.current = false
       setBusy(false)
     }

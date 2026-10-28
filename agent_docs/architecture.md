@@ -221,5 +221,37 @@ I/O; the lane remains occupied until settlement, and late/closed results are not
 published. Release/expiry removes temporary files only. Already exported copies
 cannot be revoked. Shutdown marks retrieval closed and attempts staging cleanup;
 cleanup failure is logged without preventing Autopass/Corestore closure.
-No picker, attachment UI or new native dependency exists in this milestone.
-See [Phase 11B.1](../docs/PHASE11B1.md) for tests and limits.
+The backend milestone is described in [Phase 11B.1](../docs/PHASE11B1.md).
+
+## Native attachment UI
+
+`src/attachments.ts` owns Picker/FileSystem/Sharing operations using SDK 55 modules.
+The editor keeps a private cached source while drafting. Picker metadata is checked
+before copying and the actual cached size afterward. A shared `copy-gate.js` bounds
+native-copy waits to 15 seconds while retaining one lane until real completion; a
+late copy is cleaned, not described as canceled. Native file bytes do not enter
+Hermes or JSON IPC. `attachments.stage` now permits an omitted digest for UI clients;
+`attachments.seal` derives it from the controlled file in Bare. Existing clients
+supplying a digest remain supported; publication still rereads/verifies the bytes.
+
+`useNotebook.addEntry` reserves/copies/seals only at Save time, so long drafts do not
+hold expiring worker handles. Preparation failure precedes the replicated mutation;
+entry publication failure retains existing unknown-outcome/reconciliation behavior.
+There is no automatic replay. Synchronous refs guard selection, saving and retrieval.
+Draft removal/discard/success cleans the selected cache file.
+
+`AttachmentCard.tsx` lazily requests verified exports on an explicit action, copies
+natively to an opaque private cache directory, and opens the platform share sheet.
+Worker handles are released in finally; independent share copies remain available
+for recipient reads and are eligible for startup cleanup after 24 hours. No claim
+is made that the recipient opened or saved them. Unmounted cards suppress late UI
+and sharing actions; descriptor-digest keys reset stale preparation state. File
+bytes already replicate through Autopass regardless of whether the card is opened.
+
+Direct dependencies are expo-document-picker 55.0.16, expo-file-system 55.0.25 and
+expo-sharing 55.0.23. FileSystem was previously transitive at the same version.
+Existing native/P2P package versions remain unchanged. Expo autolinking and manifest
+merging provide outgoing FileProvider sharing; no custom native module/config edits
+or incoming-share extension was added. A new APK is required. Old native binaries
+must not receive this JS over OTA without a separately approved version/minver plan.
+See [Phase 11B.2](../docs/PHASE11B2.md) for executed Android QA and remaining limits.

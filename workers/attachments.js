@@ -4,7 +4,7 @@ const crypto = require('hypercore-crypto')
 const b4a = require('b4a')
 const { FileStaging } = require('./file-staging')
 const { Fault, parseJSON, isEntry } = require('../shared/protocol')
-const { isFileMetadata, isAttachment, MAX_ATTACHMENT_BYTES } = require('../shared/attachment')
+const { isSelectionMetadata, isAttachment, MAX_ATTACHMENT_BYTES } = require('../shared/attachment')
 const fail = (code, message) => new Fault(code, message)
 
 class Attachments {
@@ -76,7 +76,7 @@ class Attachments {
   async reserve(metadata) {
     this.available()
     if (!this.pass.writable) throw fail('READ_ONLY', 'This notebook does not allow writes.')
-    if (!isFileMetadata(metadata)) {
+    if (!isSelectionMetadata(metadata)) {
       throw fail('INVALID_ATTACHMENT', 'Attachment metadata is unsupported.')
     }
     await this.sweep()
@@ -106,6 +106,31 @@ class Attachments {
       entryId: slot.entryId,
       uri: 'file://' + file.input,
       expiresAt: slot.expiresAt
+    }
+  }
+
+  async seal(handle) {
+    if (!this.pass.writable) throw fail('READ_ONLY', 'This notebook does not allow writes.')
+    const slot = this.slot(handle, 'upload')
+    if (slot.state !== 'staged' || slot.busy) {
+      throw fail('INVALID_TRANSFER', 'Attachment is no longer awaiting preparation.')
+    }
+    slot.busy = true
+    try {
+      const bytes =
+        slot.metadata.digest === undefined
+          ? await this.stage.readBytes(handle)
+          : await this.stage.read(handle, slot.metadata.digest)
+      if (bytes.length !== slot.metadata.size) throw new Error('Size changed')
+      slot.metadata.digest = crypto.hash(bytes).toString('hex')
+      return { ...slot.metadata }
+    } catch {
+      throw fail(
+        'INVALID_ATTACHMENT',
+        'Selected file is missing, oversized or changed. Select it again.'
+      )
+    } finally {
+      slot.busy = false
     }
   }
 

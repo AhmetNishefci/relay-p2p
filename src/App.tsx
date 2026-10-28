@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import {
   ActivityIndicator,
   Keyboard,
@@ -21,6 +21,10 @@ import {
 import { StatusBar } from 'expo-status-bar'
 import { useNotebook } from './useNotebook'
 import { PairingPanel } from './PairingPanel'
+import { AttachmentCard } from './AttachmentCard'
+import { selectAttachment, removeCached, cleanupAttachmentCache } from './attachments'
+import { fileSize, fileType } from './attachment-selection'
+import type { SelectedFile } from './attachment-selection'
 import { Acknowledgments } from './Acknowledgments'
 import { NotebookActivity } from './NotebookActivity'
 import type { ActivityFilter } from './activity'
@@ -63,11 +67,57 @@ export default function App() {
   }, [])
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [attachment, setAttachment] = useState<SelectedFile | null>(null)
+  const [attachmentPending, setAttachmentPending] = useState(false)
+  const [attachmentError, setAttachmentError] = useState('')
+  const attachmentRef = useRef<SelectedFile | null>(null)
+  const selecting = useRef(false)
+  const alive = useRef(true)
+  useEffect(() => {
+    alive.current = true
+    cleanupAttachmentCache().catch(() =>
+      console.warn('[relay] Old file cache cleanup could not complete.')
+    )
+    return () => {
+      alive.current = false
+      if (attachmentRef.current) void removeCached(attachmentRef.current.uri)
+    }
+  }, [])
+  function clearAttachment() {
+    if (attachmentRef.current) void removeCached(attachmentRef.current.uri)
+    attachmentRef.current = null
+    setAttachment(null)
+    setAttachmentError('')
+  }
+  async function pickAttachment() {
+    if (selecting.current || busy || notebook.mutationUnknown) return
+    selecting.current = true
+    setAttachmentPending(true)
+    setAttachmentError('')
+    try {
+      const next = await selectAttachment()
+      if (!next) return
+      if (!alive.current) {
+        void removeCached(next.uri)
+        return
+      }
+      if (attachmentRef.current) void removeCached(attachmentRef.current.uri)
+      attachmentRef.current = next
+      setAttachment(next)
+    } catch (err) {
+      if (alive.current) {
+        setAttachmentError(err instanceof Error ? err.message : 'Could not select this file.')
+      }
+    } finally {
+      selecting.current = false
+      if (alive.current) setAttachmentPending(false)
+    }
+  }
   const [refreshing, setRefreshing] = useState(false)
   const [checking, setChecking] = useState(false)
   const ready = worker.state === 'ready'
   const selected = entries.find((entry) => entry.id === selectedId)
-  const dirty = title.length > 0 || body.length > 0
+  const dirty = title.length > 0 || body.length > 0 || !!attachment
 
   function go(next: Screen) {
     Keyboard.dismiss()
@@ -75,11 +125,11 @@ export default function App() {
     setScreen(next)
   }
   function back() {
-    if (busy) return
+    if (busy || attachmentPending || selecting.current) return
     if (screen === 'editor' && dirty) {
       Alert.alert(
         'Discard this draft?',
-        'This only discards the text on this screen. Notebook entries are kept.',
+        'This discards the draft and its selected file. Saved notebook entries are kept.',
         [
           { text: 'Keep writing', style: 'cancel' },
           {
@@ -88,6 +138,7 @@ export default function App() {
             onPress: () => {
               setTitle('')
               setBody('')
+              clearAttachment()
               go('home')
             }
           }
@@ -110,12 +161,13 @@ export default function App() {
     go('detail')
   }
   async function save() {
-    if (!title.trim() || busy) return
+    if (!title.trim() || busy || attachmentPending || selecting.current) return
     Keyboard.dismiss()
-    const entry = await notebook.addEntry(title, body)
+    const entry = await notebook.addEntry(title, body, attachment)
     if (entry) {
       setTitle('')
       setBody('')
+      clearAttachment()
       setSelectedId(entry.id)
       setDetailReturn('home')
       setScreen('detail')
@@ -342,12 +394,49 @@ export default function App() {
           <Text style={ui.caption}>
             {title.length}/120 title · {body.length}/8,000 notes
           </Text>
+          <View style={ui.card}>
+            <Text style={ui.eyebrow}>ADD CONTEXT</Text>
+            {attachment ? (
+              <>
+                <Text style={ui.label} testID='selected-attachment-name'>
+                  {attachment.filename}
+                </Text>
+                <Text style={ui.caption}>
+                  {fileType(attachment.mimeType)} · {fileSize(attachment.size)}
+                </Text>
+                <Button
+                  label='Remove selected file'
+                  variant='quiet'
+                  onPress={clearAttachment}
+                  disabled={busy || attachmentPending || notebook.mutationUnknown}
+                  testID='remove-selected-attachment'
+                />
+              </>
+            ) : (
+              <Text style={ui.caption}>One JPEG, PNG, PDF or text file · Up to 1 MiB</Text>
+            )}
+            <Button
+              label={
+                attachmentPending
+                  ? 'Reading selected file…'
+                  : attachment
+                    ? 'Choose another file'
+                    : 'Attach a file'
+              }
+              variant='secondary'
+              onPress={pickAttachment}
+              pending={attachmentPending}
+              disabled={busy || notebook.mutationUnknown || !worker.writable}
+              testID='select-attachment'
+            />
+            {!!attachmentError && <Notice text={attachmentError} error />}
+          </View>
           {notices}
         </ScrollView>
         <View style={ui.footer}>
           <Button
             label={notebook.mutationUnknown ? 'Review notebook' : busy ? 'Saving…' : 'Save entry'}
-            pending={busy || checking}
+            pending={busy || checking || attachmentPending}
             disabled={!notebook.mutationUnknown && (!title.trim() || !worker.writable)}
             onPress={notebook.mutationUnknown ? reviewNotebook : save}
             testID={notebook.mutationUnknown ? 'review-notebook' : 'add-entry'}
@@ -378,6 +467,13 @@ export default function App() {
                 {selected.body || 'No additional notes.'}
               </Text>
               {notices}
+              {selected.attachment && (
+                <AttachmentCard
+                  key={`${selected.id}:${selected.attachment.digest}`}
+                  entryId={selected.id}
+                  attachment={selected.attachment}
+                />
+              )}
               <Acknowledgments
                 entryId={selected.id}
                 title={selected.title}
@@ -497,7 +593,7 @@ export default function App() {
             return (
               <Pressable
                 accessibilityRole='button'
-                accessibilityLabel={`Open entry: ${item.title}. ${count} acknowledgments recorded.`}
+                accessibilityLabel={`Open entry: ${item.title}. ${count} acknowledgments recorded.${item.attachment ? ` Attachment: ${item.attachment.filename}.` : ''}`}
                 onPress={() => openEntry(item)}
                 testID={`entry-${item.id}`}
                 style={({ pressed }) => [
@@ -515,6 +611,12 @@ export default function App() {
                 {!!item.body && (
                   <Text numberOfLines={2} style={ui.caption}>
                     {item.body}
+                  </Text>
+                )}
+                {item.attachment && (
+                  <Text style={ui.caption}>
+                    Attachment · {fileType(item.attachment.mimeType)} ·{' '}
+                    {fileSize(item.attachment.size)}
                   </Text>
                 )}
                 <View style={ui.between}>

@@ -82,6 +82,7 @@ class Notebook {
   }
 
   async perform(op, payload) {
+    if (op === 'attachments.seal') return this.attachments.seal(payload.handle)
     if (op === 'attachments.stage') return this.attachments.reserve(payload)
     if (op === 'attachments.release') return this.attachments.release(payload.handle)
     if (op === 'entries.addAttachment') return this.attachments.create(payload)

@@ -323,3 +323,52 @@ test('unsafe staging initialization fails attachment operations closed while pre
   })
   assert.equal(await fs.readFile(path.join(outside, 'retained'), 'utf8'), 'Do not touch')
 })
+
+test('Bare seals copied files without a client digest, preserves digest-supplied clients and rejects changed bytes', async (t) => {
+  const f = await fixture(t)
+  const n = await f.open()
+  const bytes = Buffer.from('Worker computes this digest')
+  const { digest, ...meta } = metadata(bytes)
+  assert.equal(
+    validateRequest({ v: 1, type: 'request', id: 'seal', op: 'attachments.stage', payload: meta })
+      .op,
+    'attachments.stage'
+  )
+  assert.equal(
+    validateRequest({
+      v: 1,
+      type: 'request',
+      id: 'seal',
+      op: 'attachments.seal',
+      payload: { handle: 'a'.repeat(32) }
+    }).op,
+    'attachments.seal'
+  )
+  const slot = await n.run('attachments.stage', meta)
+  await fs.writeFile(fileURLToPath(slot.uri), bytes)
+  await assert.rejects(
+    n.run('entries.addAttachment', { handle: slot.handle, title: 'Not sealed', body: '' }),
+    { code: 'INVALID_ATTACHMENT' }
+  )
+  const sealed = await n.run('attachments.seal', { handle: slot.handle })
+  assert.equal(sealed.digest, digest)
+  assert.equal(isResult('attachments.seal', sealed), true)
+  assert.deepEqual(await n.run('attachments.seal', { handle: slot.handle }), sealed)
+  await fs.writeFile(fileURLToPath(slot.uri), Buffer.alloc(bytes.length, 0x41))
+  await assert.rejects(
+    n.run('entries.addAttachment', { handle: slot.handle, title: 'Changed', body: '' }),
+    { code: 'INVALID_ATTACHMENT' }
+  )
+  await assert.rejects(n.run('attachments.seal', { handle: slot.handle }), {
+    code: 'INVALID_ATTACHMENT'
+  })
+  await fs.writeFile(fileURLToPath(slot.uri), bytes)
+  const result = await n.run('entries.addAttachment', {
+    handle: slot.handle,
+    title: 'Sealed',
+    body: ''
+  })
+  assert.equal(result.entry.attachment.digest, digest)
+  Object.defineProperty(n.pass, 'writable', { get: () => false, configurable: true })
+  await assert.rejects(n.run('attachments.seal', { handle: slot.handle }), { code: 'READ_ONLY' })
+})
