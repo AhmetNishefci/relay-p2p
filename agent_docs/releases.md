@@ -8,7 +8,7 @@
 This template has **two release channels sharing one version sequence**: native builds
 that go through the App Store and Play Store, and OTA payloads that replace only the
 JavaScript bundle. `package.json#version` is the single source of truth for both, and
-the rules for keeping them ordered are in [README](../README.md#version-management).
+the rules for keeping them ordered are in [pinned upstream manual](https://github.com/holepunchto/hello-pear-react-native/blob/4ad3f8df5b5f20ce7621c42457795d53b2248c9b/README.md#version-management).
 
 - `app.config.js` **fully replaces** `app.json` for Expo — `@expo/config` returns only
   the dynamic config when one exists, so `app.json` reaches Expo solely through the
@@ -47,22 +47,24 @@ the rules for keeping them ordered are in [README](../README.md#version-manageme
   change to `ios/`, `android/`, `app.json`'s plugins, or a dependency with native code
   requires a prebuild and a store release — and, if older clients must not take the new
   JavaScript, a `pear.json` minimum-version bump. See
-  [`updates.md`](updates.md) for why that gate does not currently fire.
+  [`updates.md`](updates.md) for the current minimum-version gate and its unverified OTA deployment behavior.
 - `ios/`, `android/`, and `modules/pear-runtime-reload/` are gitignored and regenerated
   by `expo prebuild`. The config plugin's patches share the `OTA v4` marker, so
   re-running prebuild is idempotent,
   but a **stale** generated folder from an older plugin version keeps its old native boot
   code until it is regenerated. When update behavior looks wrong on device, confirm the
   native side is current before debugging JavaScript.
-- CI (`.github/workflows/ci.yaml`) runs `npm run lint` on Ubuntu and `npm test` on a
-  Bare base image. The committed dependencies use registry packages; the older local
-  tarball warning was stale. `npm test` now runs formatting, lint, and Node foundation
-  tests (including real local Autopass stores). CI does not build the native app,
-  run prebuild, or exercise the bundled worker. Native debug/release verification
-  remains separate. Generated `src/worker.bundle.js` is gitignored.
-- `.github/workflows/publish.yml` publishes to npm on any `v*` tag — the tag shape
-  `npm version` creates. This package is `private: true`, so such a tag produces a
-  failing release job rather than a publish. Do not tag unless that is deliberate.
+- CI (`.github/workflows/ci.yaml`) now pins the Node version from `.nvmrc`, uses
+  `npm ci`, runs TypeScript, formatting/lint/Node tests and Python transcript-export
+  tests with read-only repository permissions. A local clean build does not prove a
+  GitHub-hosted CI run; that remains unexecuted until authorized publication.
+- The inherited npm publishing workflow was removed: this private assessment package
+  is not an npm release. No tags, npm/Pear publishing or remote creation is authorized
+  merely by a successful local audit.
+- Expo display branding is Relay, using committed original assets generated from
+  `scripts/render-branding.swift`. `productName` stays `HelloPear`; this avoids changing
+  updater payload paths. Android resources are generated via Expo, never hand-edited.
+
 - The shared deployment flow (`pear touch` → `pear stage` → `pear provision` →
   `pear multisig`) is documented in [Pear Docs](https://docs.pears.com/how-to/operate-an-app/manual-deployment/deployment/).
   [README](../README.md#deployments) links to it and keeps the mobile OTA payload and

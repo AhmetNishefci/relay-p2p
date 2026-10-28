@@ -14,7 +14,7 @@ the updater), `pear-runtime-react-native` (Expo config plugin),
 `hello-pear-worker` (copied into `workers/main.js`), Autopass 3.4.1, `framed-stream` + `b4a` for IPC, prettier +
 lunte. CI lints and runs `npm test` (format check, lint, and Node foundation tests) on pushes to `main` and PRs
 targeting `main`. [README](README.md) is the human
-build/deployment manual.
+Android assessment run manual; optional OTA operations are in the pinned upstream README.
 
 Key fact: **the updater never runs in React Native, and applying an update is not what
 makes it take effect.** `src/worker/runtime.ts` owns one application-lifetime Bare worklet and exchanges UTF-8
