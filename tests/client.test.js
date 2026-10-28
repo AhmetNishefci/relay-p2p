@@ -80,10 +80,17 @@ test('coalesces bursts and refreshes again if updates arrive during a list', asy
     assert.fail
   )
   const completed = refresher.refresh()
-  for (let i = 0; i < 20; i++) refresher.refresh()
+  const joined = refresher.refresh()
+  assert.equal(joined, completed)
+  let settled = false
+  joined.then(() => {
+    settled = true
+  })
+  for (let i = 0; i < 20; i++) assert.equal(refresher.refresh(), completed)
   assert.equal(resolve.length, 1)
   resolve[0]('first snapshot')
   await tick()
+  assert.equal(settled, false, 'a coalesced caller must wait for the dirty follow-up snapshot')
   assert.equal(resolve.length, 2)
   resolve[1]('latest snapshot')
   await completed
@@ -110,5 +117,22 @@ test('refresh failures reach the UI and permit a later retry', async () => {
   await refresher.refresh()
   assert.deepEqual(errors, ['list failed'])
   assert.deepEqual(values, ['recovered'])
+  refresher.close()
+})
+
+test('an update queued as a read completes is not lost', async () => {
+  let reads = 0
+  const values = []
+  const refresher = createListRefresher(
+    () => Promise.resolve(++reads),
+    (value) => {
+      values.push(value)
+      if (value === 1) queueMicrotask(() => refresher.refresh())
+    },
+    assert.fail
+  )
+  await refresher.refresh()
+  await tick()
+  assert.deepEqual(values, [1, 2])
   refresher.close()
 })

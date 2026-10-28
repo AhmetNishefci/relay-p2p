@@ -107,6 +107,22 @@ test('a corrupt active manifest fails visibly without deleting or replacing stor
   assert.equal(await fs.readFile(path.join(directory, 'active.json'), 'utf8'), '{invalid')
 })
 
+test('shutdown waits for in-flight creation and never activates it afterward', async (t) => {
+  const f = await fixture(t)
+  const library = f.open('closing')
+  await library.ready
+  const creation = library.run('notebook.create', {})
+  const rejected = assert.rejects(creation, { code: 'CLOSED' })
+  const closing = library.close()
+  assert.equal(library.close(), closing, 'concurrent shutdowns share cleanup completion')
+  await Promise.all([closing, rejected])
+  assert.equal(library.status().state, 'closed')
+  assert.equal(library.notebook, null)
+  assert.equal(library.creatingNotebook, null)
+  await assert.rejects(fs.stat(path.join(f.root, 'closing', 'active.json')))
+  assert.equal((await fs.readdir(path.join(f.root, 'closing', 'notebooks'))).length, 1)
+})
+
 test(
   'real Contributor and Viewer pairing replicate and enforce permissions through the worker service',
   { timeout: 40_000 },

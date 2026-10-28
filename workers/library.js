@@ -35,6 +35,8 @@ class Library {
     this.state = 'starting'
     this.pairing = 'idle'
     this.creating = false
+    this.creatingNotebook = null
+    this.closing = null
     this.closed = false
     this.ready = this.open()
   }
@@ -110,8 +112,12 @@ class Library {
       this.creating = true
       const directory = 'notebooks/' + crypto.randomBytes(16).toString('hex')
       const notebook = new Notebook(path.join(this.root, directory), this.options)
+      this.creatingNotebook = notebook
       try {
         await notebook.ready
+        if (this.closed) {
+          throw new Fault('CLOSED', 'Notebook creation was closed. Data is retained.')
+        }
         this.activate(directory, notebook)
         this.onState(this.status())
         return this.status()
@@ -119,6 +125,7 @@ class Library {
         await notebook.close()
         throw error
       } finally {
+        this.creatingNotebook = null
         this.creating = false
       }
     }
@@ -161,13 +168,13 @@ class Library {
     try {
       await attempt.pair.ready()
       const pass = await finished
-      if (attempt.cancelled) return
+      if (attempt.cancelled || this.closed) return
       attempt.notebook = new Notebook(path.join(this.root, attempt.directory), {
         ...this.options,
         pass
       })
       await attempt.notebook.ready
-      if (attempt.cancelled) return
+      if (attempt.cancelled || this.closed) return
       this.activate(attempt.directory, attempt.notebook)
       this.pairing = 'idle'
       clearTimeout(attempt.timer)
@@ -231,10 +238,16 @@ class Library {
     this.onState(this.status())
   }
 
-  async close() {
-    if (this.closed) return
+  close() {
+    if (this.closing) return this.closing
     this.closed = true
+    this.closing = this.cleanup()
+    return this.closing
+  }
+
+  async cleanup() {
     await this.ready.catch(() => {})
+    if (this.creatingNotebook) await this.creatingNotebook.close()
     if (this.attempt) await this.cancel(this.attempt, 'cancelled')
     if (this.notebook) await this.notebook.close()
     this.state = 'closed'

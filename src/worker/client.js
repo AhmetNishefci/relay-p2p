@@ -105,26 +105,42 @@ class WorkerClient {
 // One in-flight list, plus one dirty bit. An update during a read schedules another
 // read after completion; an older response can never replace a newer response.
 function createListRefresher(load, onValue, onError) {
-  let running = false
+  let pending = null
   let dirty = false
   let closed = false
-  async function refresh() {
-    if (closed) return
-    if (running) {
+  function refresh() {
+    if (closed) return Promise.resolve()
+    if (pending) {
       dirty = true
-      return
+      return pending
     }
-    running = true
-    do {
-      dirty = false
-      try {
-        const value = await load()
-        if (!closed) onValue(value)
-      } catch (error) {
-        if (!closed) onError(error)
-      }
-    } while (dirty && !closed)
-    running = false
+    // Publish the completion before calling load, including synchronous callbacks.
+    let resolve
+    let reject
+    pending = new Promise((done, fail) => {
+      resolve = done
+      reject = fail
+    })
+    const completion = pending
+    drain().then(resolve, reject)
+    return completion
+  }
+  async function drain() {
+    try {
+      do {
+        dirty = false
+        try {
+          const value = await load()
+          if (!closed) onValue(value)
+        } catch (error) {
+          if (!closed) onError(error)
+        }
+      } while (dirty && !closed)
+    } finally {
+      // Release ownership before resolving the drain, so a just-arriving update
+      // starts a new read instead of marking an already-finished drain dirty.
+      pending = null
+    }
   }
   return {
     refresh,
