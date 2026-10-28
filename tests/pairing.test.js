@@ -180,6 +180,43 @@ test(
         (x) => x.name === 'Viewer' && x.readOnly
       )
     )
+    await t.test('concurrent Contributor bursts and removals converge on the Viewer', async () => {
+      const added = await Promise.all(
+        Array.from({ length: 16 }, (_, i) =>
+          (i % 2 ? a : b).run('entries.add', {
+            title: 'Concurrent observation ' + i,
+            body: ''
+          })
+        )
+      )
+      const ids = new Set(added.map((value) => value.id))
+      assert.equal(ids.size, 16)
+      for (const peer of [a, b, c]) {
+        await until(
+          async () =>
+            (await peer.run('entries.list', {})).entries.filter((value) => ids.has(value.id))
+              .length === 16,
+          'Concurrent writes did not converge'
+        )
+      }
+      const removed = added.filter((_, i) => i % 2 === 0)
+      await Promise.all(
+        removed.map((value, i) => (i % 2 ? a : b).run('entries.remove', { id: value.id }))
+      )
+      const kept = added
+        .filter((_, i) => i % 2 !== 0)
+        .map((value) => value.id)
+        .sort()
+      for (const peer of [a, b, c]) {
+        await until(async () => {
+          const actual = (await peer.run('entries.list', {})).entries
+            .filter((value) => ids.has(value.id))
+            .map((value) => value.id)
+            .sort()
+          return JSON.stringify(actual) === JSON.stringify(kept)
+        }, 'Concurrent removals did not converge')
+      }
+    })
     await b.close()
     const offline = await a.run('entries.add', { title: 'While B closed', body: 'Reconnection' })
     const resumed = f.open('b')
