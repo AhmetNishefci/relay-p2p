@@ -4,7 +4,10 @@ const crypto = require('hypercore-crypto')
 const { Fault, MAX_ENTRIES, isEntry } = require('../shared/protocol')
 
 class Notebook {
-  constructor(directory, { replicate = true, onChanged = () => {}, onError = () => {} } = {}) {
+  constructor(
+    directory,
+    { replicate = true, bootstrap, pass = null, onChanged = () => {}, onError = () => {} } = {}
+  ) {
     this.state = 'starting'
     this.store = null
     this.pass = null
@@ -19,14 +22,14 @@ class Notebook {
       this.state = 'failed'
       onError()
     }
-    this.ready = this.open(directory, replicate)
+    this.ready = this.open(directory, replicate, bootstrap, pass)
   }
 
-  async open(directory, replicate) {
+  async open(directory, replicate, bootstrap, pass) {
     try {
-      this.store = new Corestore(directory)
+      this.store = pass ? pass.store : new Corestore(directory)
       this.store.on('error', this.onError)
-      this.pass = new Autopass(this.store, { replicate })
+      this.pass = pass || new Autopass(this.store, { replicate, bootstrap })
       this.pass.on('error', this.onError)
       this.pass.on('update', this.onChanged)
       await this.pass.ready()
@@ -62,6 +65,27 @@ class Notebook {
   }
 
   async perform(op, payload) {
+    if (op === 'participants.list') {
+      const localKey = this.pass.writerKey.toString('hex')
+      const participants = new Map()
+      for await (const writer of this.pass.listWriters()) {
+        const key = writer.key.toString('hex')
+        participants.set(key, {
+          key,
+          name: typeof writer.name === 'string' ? writer.name.slice(0, 80) : null,
+          readOnly: !!writer.readOnly,
+          isLocal: key === localKey
+        })
+        if (participants.size > 100) throw new Fault('LIST_LIMIT', 'Too many participant records.')
+      }
+      participants.set(localKey, {
+        key: localKey,
+        name: null,
+        readOnly: !this.pass.writable,
+        isLocal: true
+      })
+      return { participants: [...participants.values()] }
+    }
     if (op === 'entries.list') {
       const entries = []
       let skipped = 0
@@ -98,6 +122,16 @@ class Notebook {
       return { entries, skipped }
     }
     if (!this.pass.writable) throw new Fault('READ_ONLY', 'This notebook does not allow writes.')
+    if (op === 'invite.create') {
+      return {
+        invite: await this.pass.createInvite({ readOnly: payload.readOnly }),
+        readOnly: payload.readOnly
+      }
+    }
+    if (op === 'invite.cancel') {
+      await this.pass.deleteInvite()
+      return { cancelled: true }
+    }
     if (op === 'entries.add') {
       const entry = {
         schemaVersion: 1,

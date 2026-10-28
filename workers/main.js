@@ -6,7 +6,7 @@ const FramedStream = require('framed-stream')
 const path = require('bare-path')
 const dir = require('bare-storage')
 const { isBareKit } = require('which-runtime')
-const { Notebook } = require('./notebook')
+const { Library } = require('./library')
 const { handleRequest } = require('./requests')
 const { publicError } = require('../shared/protocol')
 
@@ -47,14 +47,15 @@ pear.on('minver-required', () => pipe.write('minver-required')) // for mobile st
 const send = (message) => {
   if (!pipe.destroying) pipe.write(JSON.stringify(message))
 }
-const notebook = new Notebook(path.join(pear.storage, 'relay', 'notebook'), {
+const notebook = new Library(path.join(pear.storage, 'relay'), {
   onChanged: () => send({ v: 1, type: 'event', event: 'changed', payload: null }),
-  onError: () =>
+  onState: (status) => send({ v: 1, type: 'event', event: 'ready', payload: status }),
+  onError: (error) =>
     send({
       v: 1,
       type: 'event',
       event: 'error',
-      payload: { code: 'STORAGE_ERROR', message: 'Notebook storage failed. Restart the app.' }
+      payload: error
     })
 })
 notebook.ready

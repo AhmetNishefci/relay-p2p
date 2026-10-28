@@ -6,9 +6,22 @@ export type Entry = {
   body: string
   createdAt: number
 }
-export type WorkerStatus = { state: 'starting' | 'ready' | 'failed' | 'closed'; writable: boolean }
+export type WorkerStatus = {
+  state: 'starting' | 'idle' | 'joining' | 'ready' | 'failed' | 'closed'
+  writable: boolean
+  hasNotebook?: boolean
+  pairing?: 'idle' | 'joining' | 'cancelling' | 'cancelled' | 'failed'
+  writerKey?: string | null
+}
+export type Participant = { key: string; name: string | null; readOnly: boolean; isLocal: boolean }
 export type Operations = {
   status: { payload: Record<string, never>; result: WorkerStatus }
+  'notebook.create': { payload: Record<string, never>; result: WorkerStatus }
+  'pair.start': { payload: { invite: string; name?: string }; result: WorkerStatus }
+  'pair.cancel': { payload: Record<string, never>; result: { cancelled: true } }
+  'invite.create': { payload: { readOnly: boolean }; result: { invite: string; readOnly: boolean } }
+  'invite.cancel': { payload: Record<string, never>; result: { cancelled: true } }
+  'participants.list': { payload: Record<string, never>; result: { participants: Participant[] } }
   'entries.list': { payload: Record<string, never>; result: { entries: Entry[]; skipped: number } }
   'entries.add': { payload: { title: string; body: string }; result: Entry }
   'entries.remove': { payload: { id: string }; result: { id: string; removed: true } }

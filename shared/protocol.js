@@ -37,7 +37,24 @@ function validateRequest(value) {
   switch (value.op) {
     case 'status':
     case 'entries.list':
+    case 'participants.list':
+    case 'notebook.create':
+    case 'invite.cancel':
+    case 'pair.cancel':
       if (fields(payload, []) && Object.keys(payload).length === 0) return value
+      break
+    case 'invite.create':
+      if (fields(payload, ['readOnly']) && typeof payload.readOnly === 'boolean') return value
+      break
+    case 'pair.start':
+      if (
+        fields(payload, ['invite', 'name']) &&
+        text(payload.invite, 512) &&
+        payload.invite.length > 0 &&
+        (payload.name === undefined || text(payload.name, 80))
+      ) {
+        return value
+      }
       break
     case 'entries.add':
       if (
@@ -75,13 +92,46 @@ function isEntry(value) {
 function isStatus(value) {
   return (
     object(value) &&
-    ['starting', 'ready', 'failed', 'closed'].includes(value.state) &&
-    typeof value.writable === 'boolean'
+    ['starting', 'idle', 'joining', 'ready', 'failed', 'closed'].includes(value.state) &&
+    typeof value.writable === 'boolean' &&
+    (value.hasNotebook === undefined || typeof value.hasNotebook === 'boolean') &&
+    (value.pairing === undefined ||
+      ['idle', 'joining', 'cancelling', 'cancelled', 'failed'].includes(value.pairing)) &&
+    (value.writerKey === undefined ||
+      value.writerKey === null ||
+      (typeof value.writerKey === 'string' && /^[a-f0-9]{64}$/.test(value.writerKey)))
   )
 }
 
 function isResult(op, value) {
-  if (op === 'status') return isStatus(value)
+  if (op === 'status' || op === 'notebook.create' || op === 'pair.start') return isStatus(value)
+  if (op === 'invite.create') {
+    return (
+      object(value) &&
+      text(value.invite, 512) &&
+      value.invite.length > 0 &&
+      typeof value.readOnly === 'boolean'
+    )
+  }
+  if (op === 'invite.cancel' || op === 'pair.cancel') {
+    return object(value) && value.cancelled === true
+  }
+  if (op === 'participants.list') {
+    return (
+      object(value) &&
+      Array.isArray(value.participants) &&
+      value.participants.length <= 101 &&
+      value.participants.every(
+        (p) =>
+          object(p) &&
+          typeof p.key === 'string' &&
+          /^[a-f0-9]{64}$/.test(p.key) &&
+          (p.name === null || text(p.name, 80)) &&
+          typeof p.readOnly === 'boolean' &&
+          typeof p.isLocal === 'boolean'
+      )
+    )
+  }
   if (op === 'entries.add') return isEntry(value)
   if (op === 'entries.remove') return object(value) && entryId(value.id) && value.removed === true
   return (
