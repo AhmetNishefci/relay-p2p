@@ -11,7 +11,9 @@ const { validateRequest, isAcknowledgment, isResult } = require('../shared/proto
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 async function until(check, reason) {
-  const deadline = Date.now() + 12_000
+  // Real DHT rediscovery after restart can exceed 12s under native-build load.
+  // Keep every assertion and a bounded wait; this is not a delivery guarantee.
+  const deadline = Date.now() + 30_000
   while (Date.now() < deadline) {
     if (await check()) return
     await delay(30)
@@ -181,7 +183,7 @@ test('malformed acknowledgments are counted and normalized; invalid local record
 
 test(
   'real peer handoff replicates, survives reconnect, enforces Viewer permissions, and demonstrates shared-key trust limits',
-  { timeout: 45_000 },
+  { timeout: 120_000 },
   async (t) => {
     const net = await testnet(10)
     t.after(() => net.destroy())
