@@ -41,5 +41,11 @@ class TranscriptExportTest(unittest.TestCase):
         self.assertEqual(counts['image_fields'], 1)
         self.assertNotEqual(original, result)
 
+    def test_masks_watchman_cookie_host_without_removing_application_code(self):
+        counts = collections.Counter()
+        result = ai.redact('root/.watchman-cookie-Private-Mac.local-123 styles.localStatus', counts)
+        self.assertEqual(result, 'root/[WATCHMAN COOKIE REDACTED] styles.localStatus')
+        self.assertEqual(counts['watchman_machine_identifiers'], 1)
+
 if __name__ == '__main__':
     unittest.main()

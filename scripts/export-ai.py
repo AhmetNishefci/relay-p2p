@@ -47,6 +47,7 @@ def redact(value, counts, image=False):
         (CAPABILITY, 'possible_invite_capabilities', '[POSSIBLE INVITE CAPABILITY REDACTED]'),
         (BASE64, 'encoded_machine_or_binary_data', '[ENCODED MACHINE/BINARY DATA REDACTED]'),
         (HOME, 'home_paths', '<HOME>'),
+        (re.compile(r'\.watchman-cookie-[^/\s\"\'`\\]+'), 'watchman_machine_identifiers', '[WATCHMAN COOKIE REDACTED]'),
         (re.compile(r'[\w.+-]+@unknown'), 'machine_identifiers', '<MACHINE_ID>'),
     ]:
         value, count = pattern.subn(replacement, value)
