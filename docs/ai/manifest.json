@@ -1,29 +1,31 @@
 {
   "description": "Genuine visible records, filtered and privacy-redacted; not an unmodified original.",
-  "captured_at_utc": "2026-10-28T12:55:12.823496+00:00",
+  "captured_at_utc": "2026-10-28T15:38:46.388625+00:00",
   "sources": {
     "rollout-2026-10-28T08-10-06-01a18158-3cb1-7e70-a804-2b4d3c33e634.jsonl": {
-      "sha256": "e3df70ad1824caca9c4d06c344f27c5c1da84dcb3fd95c103bae7318da7b5949",
-      "bytes": 38201739,
-      "last_timestamp": "2026-10-28T12:55:10.953Z",
-      "visible_records": 1089
+      "sha256": "30071c277d983a4478555521a84c34f84dcf2d8c4c696ed78d96f450b9dfcdf0",
+      "bytes": 46119512,
+      "last_timestamp": "2026-10-28T15:38:45.581Z",
+      "visible_records": 1472
     }
   },
   "export_file": "codex-visible.jsonl.gz",
-  "export_sha256": "d6b5304c2c477ec30679fcc4b7a72145c4e27d20b9cde83e18b1b2514e5b8138",
-  "decompressed_sha256": "3356f3b07533ff7143b4515aabf2b637b2ecab794d050ec73bd09542430a688a",
-  "exported_records": 1089,
+  "export_sha256": "1fc123c98492ec75a5a24d660e7e6252a63fda3abb65c5dadf01b1dacd7630ca",
+  "decompressed_sha256": "9e0ba02eea936f3ec29a6c184574b5b7f7177d26247fd55f27d4844eff0a6f20",
+  "exported_records": 1472,
   "redaction_counts": {
     "private_keys": 0,
     "credentials": 0,
     "possible_invite_capabilities": 0,
     "encoded_machine_or_binary_data": 2,
-    "home_paths": 419,
-    "machine_identifiers": 4,
-    "image_fields": 51
+    "home_paths": 518,
+    "unrelated_project_roots": 17,
+    "watchman_machine_identifiers": 7,
+    "machine_identifiers": 6,
+    "image_fields": 57
   },
   "selection": "Visible user/assistant messages and tool calls/results only; internal instructions/reasoning and duplicate session events excluded.",
-  "privacy": "Image data withheld; possible long z-base32 capabilities, credential patterns, long encoded machine data, private keys, home paths and machine identifiers replaced with explicit markers. No text summarized.",
+  "privacy": "Image data withheld; possible long z-base32 capabilities, credential patterns, long encoded machine data, private keys, home paths, unrelated project roots and machine identifiers replaced with explicit markers. No text summarized.",
   "cutoff": "Ongoing session: records after capture are absent. Refresh after the final response before publishing.",
   "completeness": "This known Codex session is accounted for. Other AI use requires candidate confirmation; no qualifying human code contribution is evidenced."
 }

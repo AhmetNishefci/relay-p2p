@@ -13,14 +13,15 @@ that basis. Git author identity alone is not evidence of manual implementation.
 
 ## Scope of assistance
 
-| Phase       | Recorded AI contribution                                                                                                                          |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1           | Inspect environment, import official template `4ad3f8d`, configure upgrade identifier, build/test Android baseline                                |
-| 2           | Generate persistent Autopass service, validated IPC/client/runtime, verification UI and tests                                                     |
-| 3           | Generate pairing/storage lifecycle, Contributor/Viewer permissions, UI and real-peer verification drivers                                         |
-| 4           | Generate acknowledgment schema/operations/UI/tests and investigate mutable shared-key trust limits                                                |
-| 5           | Generate product screens, controller/presentation components, visual QA and interaction tests                                                     |
-| Final audit | Inspect actual assessment/source, reproduce/fix races, generate original branding, audit reproducibility/security, and prepare transcript exports |
+| Phase       | Recorded AI contribution                                                                                                                                   |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1           | Inspect environment, import official template `4ad3f8d`, configure upgrade identifier, build/test Android baseline                                         |
+| 2           | Generate persistent Autopass service, validated IPC/client/runtime, verification UI and tests                                                              |
+| 3           | Generate pairing/storage lifecycle, Contributor/Viewer permissions, UI and real-peer verification drivers                                                  |
+| 4           | Generate acknowledgment schema/operations/UI/tests and investigate mutable shared-key trust limits                                                         |
+| 5           | Generate product screens, controller/presentation components, visual QA and interaction tests                                                              |
+| Final audit | Inspect actual assessment/source, reproduce/fix races, generate original branding, audit reproducibility/security, and prepare transcript exports          |
+| 7           | Generate measured refresh/payload fixes, ambiguous-outcome recovery, adversarial tests, Android verification drivers and native architecture documentation |
 
 Existing upstream code remains credited to Holepunch. The worker began as the
 required copy of `hello-pear-worker`, with generated application integration.
