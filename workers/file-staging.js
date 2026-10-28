@@ -12,7 +12,7 @@ function failure(code) {
 }
 
 // Root is trusted application configuration, never a request-supplied path.
-// This helper is not exposed through Relay's product IPC operations.
+// Product IPC exposes only service-owned handles, never a caller-supplied root.
 class FileStaging {
   constructor(root) {
     this.root = path.resolve(root)
@@ -44,7 +44,7 @@ class FileStaging {
     return path.join(this.root, token)
   }
 
-  async inspect(token, expectedDigest) {
+  async read(token, expectedDigest) {
     if (typeof expectedDigest !== 'string' || !DIGEST.test(expectedDigest)) {
       throw failure('INVALID_DIGEST')
     }
@@ -77,9 +77,20 @@ class FileStaging {
     }
     const digest = crypto.hash(bytes).toString('hex')
     if (digest !== expectedDigest) throw failure('INTEGRITY_MISMATCH')
-    const output = path.join(directory, 'output.bin')
+    return bytes
+  }
+
+  async write(token, bytes) {
+    if (bytes.length > MAX_FILE_BYTES) throw failure('FILE_TOO_LARGE')
+    const output = path.join(this.directory(token), 'output.bin')
     await fs.writeFile(output, bytes, { flag: 'wx', mode: 0o600 })
-    return { size: bytes.length, digest, output }
+    return output
+  }
+
+  async inspect(token, expectedDigest) {
+    const bytes = await this.read(token, expectedDigest)
+    const output = await this.write(token, bytes)
+    return { size: bytes.length, digest: expectedDigest, output }
   }
 
   async remove(token) {

@@ -197,7 +197,11 @@ function isUnknownMutationError(error) {
     'NOT_READY',
     'BUSY',
     'ENTRY_NOT_FOUND',
-    'INVALID_ACK'
+    'INVALID_ACK',
+    'INVALID_ATTACHMENT',
+    'INVALID_TRANSFER',
+    'STAGING_BUSY',
+    'STAGING_ERROR'
   ]
   return !denied.includes(error && error.code)
 }

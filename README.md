@@ -200,8 +200,13 @@ See [pairing behavior and tests](docs/PHASE3.md).
 
 ## Limits and security
 
-- One active notebook per installation. No editor for existing entries or file
-  attachments; attachments are optional in the assessment.
+- One active notebook per installation. No editor for existing entries or attachment
+  selection/opening UI. The worker supports one attachment per entry, at most **1 MiB**,
+  with JPEG, PNG, PDF and plain-text MIME labels. Filename/MIME validation is not content
+  authentication or malware scanning. Backend operations and verification are documented
+  in [Phase 11B.1](docs/PHASE11B1.md); ordinary app entry creation is unchanged. Binary
+  records are retained after entry removal or partial saves; aggregate storage quotas
+  and replicated garbage collection are not implemented.
 - Snapshots are bounded to 200 entries and 1,000 valid acknowledgment records
   (including retained orphans), with a 1,500,000-character normalized budget. JSON
   IPC also has a 4,600,000-byte ceiling that preserves these supported sizes.
@@ -223,6 +228,6 @@ The full original template operations guide is available at the
 [pinned upstream README](https://github.com/holepunchto/hello-pear-react-native/blob/4ad3f8df5b5f20ce7621c42457795d53b2248c9b/README.md).
 This assessment does not require publishing npm packages or Pear OTA updates.
 
-Attachment architecture experiments are documented in [Phase 11A](docs/PHASE11A.md).
-They verify an isolated storage adapter and private-file staging, not a user-facing
-attachment workflow; the supported product capabilities above remain unchanged.
+Attachment architecture prerequisites are documented in [Phase 11A](docs/PHASE11A.md).
+The [backend milestone](docs/PHASE11B1.md) adds controlled staging and validated P2P
+binary records. It does not add a user-facing attachment workflow.

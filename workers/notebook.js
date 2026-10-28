@@ -1,3 +1,5 @@
+const { Attachments } = require('./attachments')
+const path = require('path')
 const { notebookRecords } = require('./record-snapshot')
 const Corestore = require('corestore')
 const Autopass = require('autopass')
@@ -19,6 +21,7 @@ class Notebook {
     this.state = 'starting'
     this.store = null
     this.pass = null
+    this.attachments = null
     this.queue = Promise.resolve()
     this.queued = 0
     this.closing = null
@@ -42,6 +45,11 @@ class Notebook {
       this.pass.on('update', this.onChanged)
       await this.pass.ready()
       if (this.state === 'failed') throw new Error('Storage failed during initialization')
+      this.attachments = new Attachments(this.pass, path.join(directory, '.attachment-staging'))
+      await this.attachments.ready.catch((error) =>
+        console.error('[relay] Attachment staging unavailable:', error)
+      )
+      if (this.state === 'failed') throw new Error('Storage failed during staging initialization')
       this.state = 'ready'
       console.log('[relay] Autopass ready')
     } catch (error) {
@@ -63,6 +71,7 @@ class Notebook {
     if (this.state !== 'ready') {
       return Promise.reject(new Fault('NOT_READY', 'Notebook is not ready. Check worker status.'))
     }
+    if (op === 'attachments.get') return this.attachments.get(payload.entryId)
     if (this.queued >= 32) return Promise.reject(new Fault('BUSY', 'Too many pending operations.'))
     this.queued++
     const task = this.queue.then(() => this.perform(op, payload))
@@ -73,6 +82,9 @@ class Notebook {
   }
 
   async perform(op, payload) {
+    if (op === 'attachments.stage') return this.attachments.reserve(payload)
+    if (op === 'attachments.release') return this.attachments.release(payload.handle)
+    if (op === 'entries.addAttachment') return this.attachments.create(payload)
     if (op === 'participants.list') {
       const localKey = this.pass.writerKey.toString('hex')
       const participants = new Map()
@@ -148,7 +160,15 @@ class Notebook {
           )
         }
         const { schemaVersion, kind, id, title, body, createdAt } = entry
-        const normalized = { schemaVersion, kind, id, title, body, createdAt }
+        const normalized = {
+          schemaVersion,
+          kind,
+          id,
+          title,
+          body,
+          createdAt,
+          ...(entry.attachment ? { attachment: entry.attachment } : {})
+        }
         snapshotLength += JSON.stringify(normalized).length
         if (snapshotLength > 1_500_000) {
           throw new Fault('LIST_LIMIT', 'Notebook exceeds the foundation snapshot size limit.')
@@ -263,6 +283,11 @@ class Notebook {
     await this.ready.catch(() => {})
     this.state = 'closed'
     await this.queue
+    if (this.attachments) {
+      await this.attachments
+        .close()
+        .catch((error) => console.error('[relay] Attachment cleanup failed:', error))
+    }
     if (this.pass) this.pass.off('update', this.onChanged)
     try {
       if (this.pass) await this.pass.close()

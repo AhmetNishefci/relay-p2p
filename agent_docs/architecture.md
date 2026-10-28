@@ -44,6 +44,8 @@ facts.
   separate from the updater store. See `docs/PHASE3.md` for activation/cancellation.
   Startup awaits `pass.ready()`. Requests are validated in `shared/protocol.js` and
   dispatched by `workers/requests.js`; mutations and list snapshots are serialized.
+  Attachment retrieval has a separate single-job lane and deadline; timeout retains
+  that lane until the underlying read settles, without blocking entry/ack writes.
   `get()` returns `{ value, file }` or null. Notebook refresh uses the isolated
   `workers/record-snapshot.js` adapter: a single `pass.base.view.snapshot()` and
   `for await` scans of the `ack:` and `entry:` key ranges. Autopass 3.4.1 ignores
@@ -184,5 +186,40 @@ slots on normal completion/failure. Forced termination can leave cache files;
 production expiry/recovery and document-provider access are Phase 11B work.
 
 This demonstrates same-app filesystem interoperability, not an OS security boundary
-between RN and Bare. No product attachment schema, operations, UI or dependencies
-are introduced. See [Phase 11A](../docs/PHASE11A.md) for reproduction and limits.
+between RN and Bare. See [Phase 11A](../docs/PHASE11A.md) for the original diagnostic.
+
+## Production attachment backend
+
+`workers/attachments.js` is one service per active Notebook, initialized before
+ready. A staging-only initialization failure disables attachment operations while
+ordinary notebook reads/writes remain available; Autopass initialization failure
+still fails the notebook. Staging lives in `<notebook>/.attachment-staging`, separate from replicated
+records. Only random handles owned by that service are accepted; IPC never accepts
+filesystem paths or binary/base64 data. Upload handles bind immutable metadata to a
+worker-generated entry ID. Live files are capped at two slots; up to 64 short-lived
+receipts support duplicate creation checks. Handles expire after two minutes;
+periodic cleanup skips active writes. Startup clears stale random-slot directories
+only inside that dedicated staging root. Previous-session handles are invalid.
+
+New operations are `attachments.stage`, `entries.addAttachment`, `attachments.get`
+and `attachments.release`. The first two enforce `pass.writable` in Bare; Viewers
+can retrieve/release exports. Entries optionally carry a versioned descriptor;
+`attachment:<entry-id>:<digest>` records store the binary `file` field and association
+metadata. Normal snapshots include descriptors and exclude binary-record keys.
+Autopass necessarily decodes an explicitly retrieved file before Relay checks its
+size/digest; no upstream streaming or hostile-writer allocation protection is claimed.
+
+Binary publication precedes entry publication as two distinct appends. An ambiguous
+failure retains possible orphan records and rejects replay of that handle. No
+cross-record transaction or remote erasure is claimed. Completed-handle repeats
+return the original entry without appending, while removed/changed entries reject.
+Removal retains binary records, just as acknowledgment orphans are retained.
+
+Retrieval validates entry/key/descriptor/size/BLAKE2b-256, rechecks the entry and writes
+an exclusive fixed output file. Its eight-second deadline does not cancel Autopass
+I/O; the lane remains occupied until settlement, and late/closed results are not
+published. Release/expiry removes temporary files only. Already exported copies
+cannot be revoked. Shutdown marks retrieval closed and attempts staging cleanup;
+cleanup failure is logged without preventing Autopass/Corestore closure.
+No picker, attachment UI or new native dependency exists in this milestone.
+See [Phase 11B.1](../docs/PHASE11B1.md) for tests and limits.

@@ -1,4 +1,5 @@
 const b4a = require('b4a')
+const { isFileMetadata, isAttachment, isHandle } = require('./attachment')
 
 const VERSION = 1
 const MAX_MESSAGE_LENGTH = 2_000_000
@@ -83,6 +84,28 @@ function validateRequest(value) {
         return value
       }
       break
+    case 'attachments.stage':
+      if (fields(payload, ['filename', 'mimeType', 'size', 'digest']) && isFileMetadata(payload)) {
+        return value
+      }
+      break
+    case 'attachments.release':
+      if (fields(payload, ['handle']) && isHandle(payload.handle)) return value
+      break
+    case 'attachments.get':
+      if (fields(payload, ['entryId']) && entryId(payload.entryId)) return value
+      break
+    case 'entries.addAttachment':
+      if (
+        fields(payload, ['handle', 'title', 'body']) &&
+        isHandle(payload.handle) &&
+        text(payload.title, 120) &&
+        payload.title.trim().length > 0 &&
+        text(payload.body, 8000)
+      ) {
+        return value
+      }
+      break
     case 'entries.add':
       if (
         fields(payload, ['title', 'body']) &&
@@ -115,7 +138,8 @@ function isEntry(value) {
     value.title.trim().length > 0 &&
     text(value.body, 8000) &&
     Number.isSafeInteger(value.createdAt) &&
-    value.createdAt >= 0
+    value.createdAt >= 0 &&
+    (value.attachment === undefined || isAttachment(value.attachment, value.id))
   )
 }
 
@@ -173,6 +197,36 @@ function isResult(op, value) {
           typeof p.readOnly === 'boolean' &&
           typeof p.isLocal === 'boolean'
       )
+    )
+  }
+  if (op === 'attachments.stage') {
+    return (
+      object(value) &&
+      isHandle(value.handle) &&
+      entryId(value.entryId) &&
+      text(value.uri, 1024) &&
+      value.uri.startsWith('file:///') &&
+      Number.isSafeInteger(value.expiresAt)
+    )
+  }
+  if (op === 'attachments.release') return object(value) && value.released === true
+  if (op === 'attachments.get') {
+    return (
+      object(value) &&
+      isHandle(value.handle) &&
+      entryId(value.entryId) &&
+      isAttachment(value.attachment, value.entryId) &&
+      text(value.uri, 1024) &&
+      value.uri.startsWith('file:///') &&
+      Number.isSafeInteger(value.expiresAt)
+    )
+  }
+  if (op === 'entries.addAttachment') {
+    return (
+      object(value) &&
+      isEntry(value.entry) &&
+      !!value.entry.attachment &&
+      typeof value.alreadyRecorded === 'boolean'
     )
   }
   if (op === 'entries.add') return isEntry(value)

@@ -1,3 +1,12 @@
+export type Attachment = {
+  schemaVersion: 1
+  key: string
+  filename: string
+  mimeType: string
+  size: number
+  digest: string
+}
+export type FileMetadata = Omit<Attachment, 'schemaVersion' | 'key'>
 export type Entry = {
   schemaVersion: 1
   kind: 'entry'
@@ -5,6 +14,7 @@ export type Entry = {
   title: string
   body: string
   createdAt: number
+  attachment?: Attachment
 }
 export type Acknowledgment = {
   schemaVersion: 1
@@ -29,6 +39,25 @@ export type WorkerStatus = {
 }
 export type Participant = { key: string; name: string | null; readOnly: boolean; isLocal: boolean }
 export type Operations = {
+  'attachments.stage': {
+    payload: FileMetadata
+    result: { handle: string; entryId: string; uri: string; expiresAt: number }
+  }
+  'attachments.release': { payload: { handle: string }; result: { released: true } }
+  'attachments.get': {
+    payload: { entryId: string }
+    result: {
+      handle: string
+      entryId: string
+      uri: string
+      expiresAt: number
+      attachment: Attachment
+    }
+  }
+  'entries.addAttachment': {
+    payload: { handle: string; title: string; body: string }
+    result: { entry: Entry; alreadyRecorded: boolean }
+  }
   status: { payload: Record<string, never>; result: WorkerStatus }
   'notebook.create': { payload: Record<string, never>; result: WorkerStatus }
   'pair.start': { payload: { invite: string; name?: string }; result: WorkerStatus }
