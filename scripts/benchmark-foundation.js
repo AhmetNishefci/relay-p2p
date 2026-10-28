@@ -90,7 +90,7 @@ function snapshotProbe(character) {
     characters: raw.length,
     bytes: Buffer.byteLength(raw),
     samples: samples.length,
-    nodeParseAndValidationMs: { median: samples[25], p95: samples[47] }
+    nodeParseAndValidationMs: { median: (samples[24] + samples[25]) / 2, p95: samples[47] }
   }
 }
 
