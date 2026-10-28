@@ -1,0 +1,155 @@
+# AGENTS.md
+
+Holepunch's boilerplate for Expo/React Native mobile apps with **peer-to-peer OTA
+updates** (no update server). The demo UI is trivial on purpose: the plumbing is the
+product and forks build their app on top of it. Unlike the desktop siblings, an OTA
+here replaces the **JavaScript bundle** the app boots from — native code still ships
+through the App Store and Play Store, so this template carries a second version gate
+(`pear.json` `updates.minver`) that the desktop templates do not need.
+
+Stack: Expo SDK 55 (React Native 0.83, React 19, TypeScript), `react-native-bare-kit`
+(Bare worklet), `pear-mobile` (dual export: RN side starts the worklet, Bare side owns
+the updater), `pear-runtime-react-native` (Expo config plugin + Metro config only),
+`hello-pear-worker` (the worker body), `framed-stream` + `b4a` for IPC, prettier +
+lunte. CI lints and runs `npm test` (format check + lint) on pushes to `main` and PRs
+targeting `main`; there are no unit tests. [README](README.md) is the human
+build/deployment manual.
+
+Key fact: **the updater never runs in React Native, and applying an update is not what
+makes it take effect.** `src/App.tsx` only starts a Bare worklet and exchanges UTF-8
+frames with it — Corestore, Hyperswarm and the updater all live inside the worklet.
+Applying an update writes `app.bundle` + `package.json` into
+`<persistent>/pear-runtime/ota/`; which bundle actually boots is decided by **native
+code the Expo config plugin patched into `AppDelegate.swift` and `MainApplication.kt`**,
+which compares the OTA manifest version against the installed native version at launch
+and on reload. Android's reload hook lives in the generated `modules/pear-runtime-reload/`
+Expo module.
+JavaScript cannot override that choice.
+
+## Commands
+
+```sh
+npm install
+npm run bundle:bare          # REQUIRED before any run — builds src/worker.bundle.js
+npm run ios                  # expo run:ios
+npm run android              # expo run:android
+npm run production:ios       # expo run:ios --configuration Release
+npm run production:android   # expo run:android --variant release
+npm run prebuild             # expo prebuild — regenerates ios/ and android/
+npm run bundle:react-native  # RN bundles → out/<platform>/HelloPear/
+npm run build                # pear-build → dist/ (includes pear.json)
+npm run update               # bundle:bare && bundle:react-native && build
+npm run lint                 # lunte
+npm run format               # prettier . --write
+npm test                     # prettier . --check && lunte   (= CI)
+```
+
+`src/worker.bundle.js` is a gitignored build artifact that `src/App.tsx` imports
+directly. Nothing rebuilds it automatically: **after any change to `workers/main.js` or
+to a package the worker pulls in, re-run `npm run bundle:bare`** or the app keeps
+running the previous worker. A stale bundle fails silently — the app boots and the UI
+looks normal.
+
+Upstream commits the placeholder `pear://<YOUR_KEY_HERE>`; this assessment checkout
+configures a real development link using `pear touch`. The placeholder does not survive a boot: `PearRuntimeUpdater`'s constructor calls
+`link.parse(opts.upgrade)` unconditionally — it records the `updates` flag but never
+lets it gate the parse — so the placeholder throws `ERR_INVALID_URL` and kills the
+worklet at startup **even in development, where this template disables updates**. React Native never
+learns the worker died — the UI renders `v<version>` and simply nothing else ever
+arrives. A working dev run needs a real link from `pear touch` in `package.json`.
+
+**`npm install` does not currently work from a clean state.** `hello-pear-worker`,
+`pear-mobile` and `pear-runtime-react-native` resolve from
+`file:../<repo>/<name>-<version>.tgz` build outputs of sibling repos, and
+`hello-pear-worker-1.0.0.tgz` does not exist even locally — the install ends in
+`ENOENT`. Both CI jobs install before they lint, so CI is red on every push until these
+become published semver ranges. An existing `node_modules/` keeps working: **do not
+delete it**, and do not run anything that reinstalls, without first restoring the
+tarballs or replacing the specs.
+
+## Contracts: editing one side breaks the other, often silently
+
+- Worker argv is positional across a package boundary: `src/App.tsx` passes
+  `[updates, version, upgrade, appName]` to `PearRuntime.run()` ↔ `hello-pear-worker`
+  reads them through `argv = (i) => Bare.argv[i + (isBareKit ? 0 : 2)]` as
+  `updates, version, upgrade, name, dir, app`. Mobile supplies only the first four; the
+  offset is `0` under BareKit and `2` on desktop, because a worklet's argv has no
+  executable path or entry path. Adding an argument means editing both repos
+- Updates flag polarity: `App.tsx` sends `(!__DEV__).toString()` ↔ the worker computes
+  `updates: argv(0) !== 'false'`. Development sends the string `'false'` and disables
+  updates; release sends `'true'`. The value is a **string**, and any string other than
+  `'false'` enables updates
+- Pipe frames are plain UTF-8 strings compared by exact equality, framed by
+  `FramedStream` on both ends. Worker → app: `Hello from worker`, `updating`, `updated`,
+  `minver-required`, `pear:updateApplied`. App → worker: `pear:applyUpdate`. An unknown
+  frame is `console.log`ged by the worker and silently ignored by the app
+- One version drives everything: `package.json#version` → `app.config.js` → Expo →
+  iOS `CFBundleShortVersionString` / Android `versionName` → the native boot comparison,
+  and the same `package.json` is copied into `dist/` by `pear-build` as the OTA
+  manifest version. `app.config.js` replaces `app.json` outright (Expo reads the static
+  file only via the `require` inside it) and exports `{ ...app.expo, version }`, so
+  `package.json` always wins — a `version` in `app.json` is silently ignored. Deleting
+  the require, the spread or the `version` key breaks the chain
+- `pear-build`'s drive-root `package.json` ↔ `pear-mobile._writeManifest()` ↔ the
+  `package.json` native boot reads beside `app.bundle`. The payload never carries that
+  file: the per-host app directory holds only `app.bundle`, and the manifest is copied
+  onto the device at update time. Native boot needs both files and silently falls back
+  to the shipped bundle if either is missing
+- `pear.json` `updates.minver` ↔ `pear-mobile`'s `_skipUpdate()`, which reads it from
+  the drive root and skips the OTA when the running version is lower. The key is
+  lowercase `minver` in the code; see `agent_docs/updates.md` before touching it
+- App identity is one chain: `package.json#productName` (`HelloPear`) ↔ the
+  `out/<platform>/HelloPear` output dirs in `bundle:react-native` ↔ the directory
+  basename passed to each `pear-build --<host>` flag ↔ `by-arch/<host>/app/<name>/` in
+  the Deployment Directory ↔ the `name` argv the updater uses to find its payload.
+  `pear-build` validates app basenames against the package identity; the worker's
+  name must still match the deployed directory
+- `npm run build` passes `--config ./pear.json`: `pear-build` requires this config for
+  mobile projects and copies it verbatim to `dist/pear.json` alongside `package.json`
+  and the per-host app directories
+- The Expo config plugin ↔ the generated `ios/` and `android/` folders, which are
+  **gitignored**. The plugin patches native boot code during prebuild and is idempotent
+  via a version marker, so native OTA behavior can only change by regenerating them
+- `metro.config.js` ↔ `pear-runtime-react-native/metro-config`; `src/types.d.ts`
+  hand-declares `b4a` and `framed-stream`, which ship no types of their own
+
+## Boundaries
+
+You are a tool assisting the maintainer, not a substitute for them. Exceptions to any
+rule here are the human's call: when a task seems to require one, stop and surface the
+conflict instead of working around it. Exceptions are expected to be rare.
+
+- ✅ **Always:** if your change makes a _descriptive_ statement in AGENTS.md or
+  `agent_docs/` false, update the doc and flag it in your summary; if it conflicts with
+  a contract or boundary, stop and ask instead — never rewrite a rule to legalize your
+  own change
+- ✅ **Always:** re-run `npm run bundle:bare` after touching the worker or its
+  dependencies, and check runtime changes in a **release** build
+  (`npm run production:ios` / `production:android`). Development uses Metro and never
+  exercises native OTA bundle selection, so `npm run ios` passing proves nothing about
+  updates. Work is done when `npm test` passes and, for worker or update changes, a
+  release build boots
+- ⚠️ **Ask first:** `pear.json`, `package.json#version` or `productName`, new
+  dependencies, Expo SDK bumps, and any change to when an update is applied or the app
+  reloads
+- 🚫 **Never:** deployment and publishing (`pear stage`, `pear provision`,
+  `pear multisig`, `pear seed`, pushing `v*` tags — that triggers `publish.yml`),
+  unless the user explicitly asked for exactly that in this session
+- 🚫 **Never:** hand-edit `ios/` or `android/` — both are gitignored and regenerated by
+  `expo prebuild`, so edits are lost and cannot be reviewed; change the config plugin or
+  `app.json` instead. Never commit `src/worker.bundle.js`, or secrets
+
+## Topic docs — match your task, read the doc BEFORE editing that area
+
+Each `agent_docs/` file holds non-obvious, code-verified facts, including cross-package
+contracts, failure semantics and dependency behavior; each opens with its own scope
+statement. Routing:
+
+- Editing `src/`, `workers/`, or `index.ts`, or debugging worklet startup, IPC or
+  bundling → [`agent_docs/architecture.md`](agent_docs/architecture.md)
+- Touching the update flow or update UI, `pear.json`, versioning, or debugging an
+  update that never arrives or never takes effect
+  → [`agent_docs/updates.md`](agent_docs/updates.md)
+- Touching `app.json`, `app.config.js`, the build scripts or `.github/`; renaming the
+  app; or cutting a native release or an OTA release
+  → [`agent_docs/releases.md`](agent_docs/releases.md)
