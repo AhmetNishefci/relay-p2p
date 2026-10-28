@@ -23,7 +23,8 @@ Original Apache-2.0 [LICENSE](LICENSE) and [NOTICE](NOTICE) are retained.
 
 Install these prerequisites before running commands:
 
-- Node **22.23.3** (`.nvmrc`), npm, and Git.
+- Node **22.23.3** (`.nvmrc`), npm, and Git. Commands below use **nvm**;
+  another version manager is fine if it selects that exact Node version.
 - Python 3 for transcript-export tests and integrity checks.
 - **JDK 17**. Newer JDKs are not a supported substitute for this template.
 - Android Studio / command-line tools, platform-tools, emulator, API **36**, build
@@ -126,7 +127,7 @@ node scripts/benchmark-foundation.js    # Node/V8 diagnostics, not Android timin
 Tests include real isolated Corestores and local DHT peers. Native Android tests
 are separate: create/join, bidirectional writes/removal, Viewer rejection, replicated
 acknowledgment, airplane-mode reconnect, persistence and background/resume. See
-[engineering audit](docs/AUDIT.md), [product QA](docs/PHASE5.md), and
+[final readiness audit](docs/PHASE9.md), [product QA](docs/PHASE5.md),
 [Phase 7 measurements and reliability tests](docs/PHASE7.md), and
 [Notebook Activity behavior and QA](docs/PHASE8.md).
 GitHub CI configuration is not evidence of a GitHub run before the repository exists.

@@ -23,6 +23,7 @@ that basis. Git author identity alone is not evidence of manual implementation.
 | Final audit | Inspect actual assessment/source, reproduce/fix races, generate original branding, audit reproducibility/security, and prepare transcript exports          |
 | 7           | Generate measured refresh/payload fixes, ambiguous-outcome recovery, adversarial tests, Android verification drivers and native architecture documentation |
 | 8           | Generate Activity projection/UI/tests, repair cold-start insets and touch targets, verify Android peers and document results                               |
+| 9           | Audit live requirements, fresh installation/builds, peer behavior, repository hygiene and genuine records; update readiness documentation                  |
 
 Existing upstream code remains credited to Holepunch. The worker began as the
 required copy of `hello-pear-worker`, with generated application integration.

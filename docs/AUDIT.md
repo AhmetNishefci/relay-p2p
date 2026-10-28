@@ -1,6 +1,6 @@
 # Final engineering and submission audit
 
-This report records the Phase 6 audit. [Phase 7](PHASE7.md) supersedes its refresh
+This report records the Phase 6 audit; the current [final readiness audit is Phase 9](PHASE9.md). [Phase 7](PHASE7.md) supersedes its refresh
 drain behavior with per-read completion and adds payload/reliability measurements.
 The authorship and publication blockers below remain unresolved.
 
