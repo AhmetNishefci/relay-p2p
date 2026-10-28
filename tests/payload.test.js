@@ -37,8 +37,17 @@ function snapshot(entries, acknowledgments = []) {
   ]
   const pass = {
     writerKey: Buffer.alloc(32, 1),
-    async *list() {
-      yield* records
+    base: {
+      view: {
+        snapshot() {
+          return {
+            *find(name, { gte, lt }) {
+              yield* records.filter((record) => record.key >= gte.key && record.key < lt.key)
+            },
+            close() {}
+          }
+        }
+      }
     }
   }
   return Notebook.prototype.perform.call({ pass }, 'entries.list', {})

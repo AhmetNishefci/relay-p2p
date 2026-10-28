@@ -1,3 +1,4 @@
+const { notebookRecords } = require('./record-snapshot')
 const Corestore = require('corestore')
 const Autopass = require('autopass')
 const crypto = require('hypercore-crypto')
@@ -99,7 +100,7 @@ class Notebook {
       let skipped = 0
       let skippedAcknowledgments = 0
       let snapshotLength = 0
-      for await (const record of this.pass.list()) {
+      for await (const record of notebookRecords(this.pass)) {
         if (record.key.startsWith('ack:')) {
           let acknowledgment
           try {

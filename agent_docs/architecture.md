@@ -44,7 +44,13 @@ facts.
   separate from the updater store. See `docs/PHASE3.md` for activation/cancellation.
   Startup awaits `pass.ready()`. Requests are validated in `shared/protocol.js` and
   dispatched by `workers/requests.js`; mutations and list snapshots are serialized.
-  `get()` returns `{ value, file }` or null; `list()` is consumed with `for await`.
+  `get()` returns `{ value, file }` or null. Notebook refresh uses the isolated
+  `workers/record-snapshot.js` adapter: a single `pass.base.view.snapshot()` and
+  `for await` scans of the `ack:` and `entry:` key ranges. Autopass 3.4.1 ignores
+  `list(opts)`, so unrestricted listing would decode inline attachment files.
+  The adapter relies on pinned HyperDB 4.22.3 internals, closes snapshots on early
+  return/failure, and has no unrestricted fallback. It excludes separate attachment
+  keys; it cannot avoid decoding a file improperly embedded in an entry/ack record.
 - Acknowledgments are separate `ack:<entry-id>:<writer-key>` records. Bare derives the
   local key and rejects Viewer writes. The single entry snapshot includes validated
   acknowledgments/local key; existing update refreshes cover both record kinds.
@@ -165,3 +171,18 @@ explain commits and subscriptions, but its timings are not release benchmarks.
 Keep UI/main-thread frame measurements distinct from RN JS work, Bare work, and
 whole-process PSS (which includes both runtimes and native memory). See
 [Phase 7 measurements](../docs/PHASE7.md) for executed results and limitations.
+
+## Attachment feasibility diagnostics
+
+`scripts/probes/staging-rn.js` is an explicit Metro diagnostic entry, never imported
+by Relay. It invokes the existing native Expo `FileSystem` module and starts a
+separate probe worklet with no notebook/Corestore access. `workers/file-staging.js`
+limits input to 1 MiB, accepts only live random handles, verifies BLAKE2b-256 and
+uses fixed filenames in owner-accessible private cache slots. The probe transfers
+handles/digests over JSON IPC, not file contents. It closes the probe and removes
+slots on normal completion/failure. Forced termination can leave cache files;
+production expiry/recovery and document-provider access are Phase 11B work.
+
+This demonstrates same-app filesystem interoperability, not an OS security boundary
+between RN and Bare. No product attachment schema, operations, UI or dependencies
+are introduced. See [Phase 11A](../docs/PHASE11A.md) for reproduction and limits.

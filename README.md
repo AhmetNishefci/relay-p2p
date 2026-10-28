@@ -222,3 +222,7 @@ See [pairing behavior and tests](docs/PHASE3.md).
 The full original template operations guide is available at the
 [pinned upstream README](https://github.com/holepunchto/hello-pear-react-native/blob/4ad3f8df5b5f20ce7621c42457795d53b2248c9b/README.md).
 This assessment does not require publishing npm packages or Pear OTA updates.
+
+Attachment architecture experiments are documented in [Phase 11A](docs/PHASE11A.md).
+They verify an isolated storage adapter and private-file staging, not a user-facing
+attachment workflow; the supported product capabilities above remain unchanged.
