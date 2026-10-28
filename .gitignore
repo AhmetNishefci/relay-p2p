@@ -96,3 +96,7 @@ yarn-error.*
 .env
 .env.*
 *.keystore
+
+# Local Python export/test caches
+__pycache__/
+*.pyc
