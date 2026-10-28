@@ -7,6 +7,7 @@ declare module 'framed-stream' {
     constructor(stream: unknown)
     on(event: 'data', listener: (data: Uint8Array) => void): this
     on(event: 'error', listener: (err: Error) => void): this
+    on(event: 'close', listener: () => void): this
     write(data: string): void
     destroy(): void
   }
