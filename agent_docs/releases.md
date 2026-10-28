@@ -55,12 +55,11 @@ the rules for keeping them ordered are in [README](../README.md#version-manageme
   code until it is regenerated. When update behavior looks wrong on device, confirm the
   native side is current before debugging JavaScript.
 - CI (`.github/workflows/ci.yaml`) runs `npm run lint` on Ubuntu and `npm test` on a
-  Bare base image — but both jobs install first, and `npm install` currently fails with
-  `ENOENT` on the missing `hello-pear-worker` tarball, so CI is red regardless of the
-  code. It does **not** build the app, run prebuild, or exercise the worker
-  bundle — `npm test` is `prettier . --check && lunte`, and there are no unit tests.
-  Prettier picks up `.gitignore` by default, which is why the 2 MB generated
-  `src/worker.bundle.js` is not format-checked.
+  Bare base image. The committed dependencies use registry packages; the older local
+  tarball warning was stale. `npm test` now runs formatting, lint, and Node foundation
+  tests (including real local Autopass stores). CI does not build the native app,
+  run prebuild, or exercise the bundled worker. Native debug/release verification
+  remains separate. Generated `src/worker.bundle.js` is gitignored.
 - `.github/workflows/publish.yml` publishes to npm on any `v*` tag — the tag shape
   `npm version` creates. This package is `private: true`, so such a tag produces a
   failing release job rather than a publish. Do not tag unless that is deliberate.

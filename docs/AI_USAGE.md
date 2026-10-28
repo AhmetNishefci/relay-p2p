@@ -14,6 +14,28 @@ The candidate selected Relay, acknowledgment handoffs, and the principal decisio
 of sync state and pairing/trust after reviewing AI research recommendations.
 No claim of manual authorship is made for AI-generated documentation or changes.
 
+## Phase 2: Autopass and IPC foundation
+
+The candidate authorized the scoped foundation after reviewing Phase 1. Codex
+proposed the module boundaries, inspected the installed/source APIs, and generated
+`workers/notebook.js`, `workers/requests.js`, the shared protocol/record validators
+and declarations, RN client/runtime, the verification UI changes, and focused tests.
+`workers/main.js` is based on copied upstream code with Codex-generated integration.
+Codex also generated documentation changes and the local Android verification
+harness, ran checks/builds, and exercised actual Android CRUD/restart flows.
+
+These are AI-generated implementation changes, not candidate-authored code.
+Candidate review and meaningful modification of core implementation remain pending;
+no completed human review or edits are claimed. In particular the candidate should
+review request validation and error mapping, timeout reconciliation, singleton
+runtime ownership, record limits, and refresh coalescing, then make and explain
+substantive changes where appropriate. Candidate-led pairing/product development
+remains necessary; these setup/foundation phases do not establish compliance with
+the restriction on fully AI-coded submissions by themselves.
+
+The verification notes distinguish executed Node tests and Android results from
+future peer tests. No pairing or acknowledgment behavior is implemented in Phase 2.
+
 ## Authentic records
 
 Original Codex session identifier: `01a18158-3cb1-7e70-a804-2b4d3c33e634`.
@@ -30,7 +52,7 @@ A literal visible-message/tool export is also preserved as
 recorded in the manifest. It excludes internal instructions/reasoning and duplicate
 session events; message text and tool results are not summarized or redacted.
 
-That snapshot contains the original research conversation and Phase 1 records
+That snapshot contains the original research conversation and completed phase records
 through the stated cutoff. The session continues after each snapshot; no snapshot
 is represented as a complete transcript of messages that have not happened yet.
 Refresh from the original session after the final response, before submission.

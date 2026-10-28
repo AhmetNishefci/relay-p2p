@@ -9,14 +9,14 @@ through the App Store and Play Store, so this template carries a second version 
 
 Stack: Expo SDK 55 (React Native 0.83, React 19, TypeScript), `react-native-bare-kit`
 (Bare worklet), `pear-mobile` (dual export: RN side starts the worklet, Bare side owns
-the updater), `pear-runtime-react-native` (Expo config plugin + Metro config only),
-`hello-pear-worker` (the worker body), `framed-stream` + `b4a` for IPC, prettier +
-lunte. CI lints and runs `npm test` (format check + lint) on pushes to `main` and PRs
-targeting `main`; there are no unit tests. [README](README.md) is the human
+the updater), `pear-runtime-react-native` (Expo config plugin),
+`hello-pear-worker` (copied into `workers/main.js`), Autopass 3.4.1, `framed-stream` + `b4a` for IPC, prettier +
+lunte. CI lints and runs `npm test` (format check, lint, and Node foundation tests) on pushes to `main` and PRs
+targeting `main`. [README](README.md) is the human
 build/deployment manual.
 
 Key fact: **the updater never runs in React Native, and applying an update is not what
-makes it take effect.** `src/App.tsx` only starts a Bare worklet and exchanges UTF-8
+makes it take effect.** `src/worker/runtime.ts` owns one application-lifetime Bare worklet and exchanges UTF-8
 frames with it — Corestore, Hyperswarm and the updater all live inside the worklet.
 Applying an update writes `app.bundle` + `package.json` into
 `<persistent>/pear-runtime/ota/`; which bundle actually boots is decided by **native
@@ -41,10 +41,11 @@ npm run build                # pear-build → dist/ (includes pear.json)
 npm run update               # bundle:bare && bundle:react-native && build
 npm run lint                 # lunte
 npm run format               # prettier . --write
-npm test                     # prettier . --check && lunte   (= CI)
+npm test                     # formatting, lint, and foundation tests (= CI)
+npm run test:foundation      # Node protocol/client and real Autopass tests
 ```
 
-`src/worker.bundle.js` is a gitignored build artifact that `src/App.tsx` imports
+`src/worker.bundle.js` is a gitignored build artifact that `src/worker/runtime.ts` imports
 directly. Nothing rebuilds it automatically: **after any change to `workers/main.js` or
 to a package the worker pulls in, re-run `npm run bundle:bare`** or the app keeps
 running the previous worker. A stale bundle fails silently — the app boots and the UI
@@ -58,31 +59,24 @@ worklet at startup **even in development, where this template disables updates**
 learns the worker died — the UI renders `v<version>` and simply nothing else ever
 arrives. A working dev run needs a real link from `pear touch` in `package.json`.
 
-**`npm install` does not currently work from a clean state.** `hello-pear-worker`,
-`pear-mobile` and `pear-runtime-react-native` resolve from
-`file:../<repo>/<name>-<version>.tgz` build outputs of sibling repos, and
-`hello-pear-worker-1.0.0.tgz` does not exist even locally — the install ends in
-`ENOENT`. Both CI jobs install before they lint, so CI is red on every push until these
-become published semver ranges. An existing `node_modules/` keeps working: **do not
-delete it**, and do not run anything that reinstalls, without first restoring the
-tarballs or replacing the specs.
+The pinned baseline uses registry dependencies and `npm ci` was verified in Phase 1.
+Use the committed lockfile. Phase 2 adds Autopass 3.4.1 and promotes the copied
+worker's dependencies at existing locked versions; no existing package/native-addon
+versions changed. Never use broad upgrades to bypass native compatibility problems.
 
 ## Contracts: editing one side breaks the other, often silently
 
-- Worker argv is positional across a package boundary: `src/App.tsx` passes
-  `[updates, version, upgrade, appName]` to `PearRuntime.run()` ↔ `hello-pear-worker`
-  reads them through `argv = (i) => Bare.argv[i + (isBareKit ? 0 : 2)]` as
-  `updates, version, upgrade, name, dir, app`. Mobile supplies only the first four; the
-  offset is `0` under BareKit and `2` on desktop, because a worklet's argv has no
-  executable path or entry path. Adding an argument means editing both repos
-- Updates flag polarity: `App.tsx` sends `(!__DEV__).toString()` ↔ the worker computes
+- Worker argv remains positional: `src/worker/runtime.ts` passes
+  `[updates, version, upgrade, appName]`; `workers/main.js` retains the copied
+  `argv = (i) => Bare.argv[i + (isBareKit ? 0 : 2)]` helper. Mobile supplies four args.
+- Updates flag polarity: `src/worker/runtime.ts` sends `(!__DEV__).toString()` ↔ the worker computes
   `updates: argv(0) !== 'false'`. Development sends the string `'false'` and disables
   updates; release sends `'true'`. The value is a **string**, and any string other than
   `'false'` enables updates
-- Pipe frames are plain UTF-8 strings compared by exact equality, framed by
-  `FramedStream` on both ends. Worker → app: `Hello from worker`, `updating`, `updated`,
-  `minver-required`, `pear:updateApplied`. App → worker: `pear:applyUpdate`. An unknown
-  frame is `console.log`ged by the worker and silently ignored by the app
+- One FramedStream carries the original Pear UTF-8 control strings and versioned JSON
+  application requests/responses/events. See `shared/protocol.js` / `.d.ts` and
+  `docs/PHASE2.md`. Unknown or malformed application frames receive structured errors;
+  entry bodies and raw internal errors are never logged as application requests.
 - One version drives everything: `package.json#version` → `app.config.js` → Expo →
   iOS `CFBundleShortVersionString` / Android `versionName` → the native boot comparison,
   and the same `package.json` is copied into `dist/` by `pear-build` as the OTA
@@ -110,7 +104,7 @@ tarballs or replacing the specs.
 - The Expo config plugin ↔ the generated `ios/` and `android/` folders, which are
   **gitignored**. The plugin patches native boot code during prebuild and is idempotent
   via a version marker, so native OTA behavior can only change by regenerating them
-- `metro.config.js` ↔ `pear-runtime-react-native/metro-config`; `src/types.d.ts`
+- `metro.config.js` merges RN and Expo defaults; `src/types.d.ts`
   hand-declares `b4a` and `framed-stream`, which ship no types of their own
 
 ## Boundaries

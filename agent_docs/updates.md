@@ -27,7 +27,7 @@ step is the one that decides what runs, and it is not JavaScript.
 ## The minver gate — one real break, one already fixed
 
 This is the mobile-only gate that stops an OTA needing new native code from landing on
-a client that lacks it. As written today it still never reaches the UI:
+a client that lacks it. The installed worker now forwards the correct event; the earlier template notes below are corrected:
 
 1. **Casing: currently correct, historically wrong.** `pear-mobile`'s `_skipUpdate()`
    reads `JSON.parse(buffer).updates?.minver` from the drive's `/pear.json` —
@@ -36,12 +36,9 @@ a client that lacks it. As written today it still never reaches the UI:
    case-sensitive and the lookup then yields `undefined`. A dirty tree's `dist/pear.json`
    may still read `minVer` — that is a stale build artifact, overwritten by
    `npm run build`.
-2. The signal still cannot reach the UI: `pear-mobile` emits
-   `minver-required` on the `PearRuntime` instance, while `hello-pear-worker` listens
-   for `update-incompatible` — a name nothing in `pear-runtime`, `pear-mobile`,
-   `pear-runtime-updater` or `hello-pear-worker` ever emits. The `minver-required` pipe
-   frame is therefore never written, and `App.tsx`'s "Update available on the App
-   Store" state is unreachable.
+2. The copied installed worker listens for `minver-required` on `pear` and forwards
+   that original frame. Earlier upstream notes about an `update-incompatible` listener
+   are stale for the installed hello-pear-worker 1.1.0 source.
 
 Note also that `_skipUpdate` reads `pear.json` from the **drive head** while comparing
 against the **running** app's version, which is the intended semantics: "this payload
@@ -66,11 +63,9 @@ needs at least native version X."
   offer **Apply update** before the manifest has been written; applying in that window
   produces an OTA directory whose `package.json` is missing, and native boot silently
   falls back to the shipped bundle because its guard requires both files.
-- **A failed apply hangs the UI.** The worker has no try/catch around
-  `await pear.updater.applyUpdate()` and never sends a failure frame; `App.tsx` parses a
-  `pear:updateFailed` frame that nothing writes. Any throw leaves the button stuck on
-  "Updating..." forever. Real update UX needs a try/catch plus a failure reply in the
-  worker.
+- The copied worker now catches apply failures and sends a sanitized `pear:updateFailed`
+  frame, which the UI handles. Success retains `pear:updateApplied` and the original
+  reload timing. No OTA deployment/apply was exercised in the foundation milestone.
 
 ## Native boot selection — the part JavaScript cannot override
 
@@ -99,8 +94,6 @@ needs at least native version X."
 ## Seeding / replication
 
 - The app joins the drive **client-only** and never seeds — run dedicated `pear seed`ers.
-- `store.replicate` is registered **only when updates are enabled**, so app data in the
-  worker's corestore will not replicate in development (where `__DEV__` sends
-  `'false'`). When adding app P2P storage, hoist the
-  `swarm.on('connection', (c) => store.replicate(c))` line out of the updates-gated
-  block and join your app topic separately; only the updater-drive join stays gated.
+- Updater `store.replicate` remains registered only when updates are enabled. Autopass
+  owns a separate store and its own replication resources, independent of this flag.
+  Do not mix notebook replication into the updater store or swarm.

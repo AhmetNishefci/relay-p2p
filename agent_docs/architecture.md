@@ -4,9 +4,9 @@
 > startup, IPC or bundling. Only non-obvious, code-verified facts — the code is the
 > reference for everything else. Index: [AGENTS.md](../AGENTS.md).
 
-React Native view (`src/App.tsx`) ↔ `FramedStream` over the BareKit IPC duplex ↔ Bare
-worklet (`workers/main.js` → the `hello-pear-worker` package: swarm + corestore +
-updater). The code is small — read it for the wiring; below are only the non-obvious
+React Native view (`src/App.tsx`) → one app-lifetime client (`src/worker/runtime.ts`)
+↔ `FramedStream` over BareKit IPC ↔ Bare worker (`workers/main.js`: copied updater
+scaffolding plus an isolated Autopass notebook). The code is small — read it for the wiring; below are only the non-obvious
 facts.
 
 - **Two packages expose a `PearRuntime`, and they are not interchangeable.**
@@ -15,8 +15,8 @@ facts.
   Worklet and returns its IPC), while Bare resolves to `bare.js` (the updater/storage
   class). `pear-runtime-react-native` also ships a runtime class, but its `run` is an
   **instance** method (`new PearRuntime().run(...)`). This project uses `pear-mobile`
-  for the runtime and imports `pear-runtime-react-native` only for `./plugin` and
-  `./metro-config` — never as a runtime import.
+  for the runtime and uses `pear-runtime-react-native` as an Expo config plugin,
+  never as a runtime import. Metro merges React Native and Expo defaults.
 - **The `.bundle` extension in `'/worker.bundle'` is load-bearing, and it is Bare that
   requires it, not BareKit.** `Worklet.start()` only type-checks the filename and
   forwards it to the native `startBytes`/`startUTF8`; it never inspects the extension.
@@ -32,16 +32,15 @@ facts.
   `react-native-b4a` is not installed. `FramedStream` itself needs no mobile variant: it
   only depends on `streamx` and `b4a`, and the BareKit IPC object already is a `streamx`
   Duplex.
-- `workers/main.js` is a one-line `require('hello-pear-worker')`. That package's
-  `package.json#imports` maps the specifier `pear-runtime` to `pear-mobile` under the
-  `ios`/`android`/`simulator` conditions and to desktop `pear-runtime` otherwise, which
-  is how one worker body serves both this repo and hello-pear-electron. `bare-pack`
-  resolves the condition at bundle time — the emitted `src/worker.bundle.js` contains
-  `node_modules/pear-mobile/bare.js` and no desktop `pear-runtime`.
-- **Because the worker lives in a package, it resolves against that package's
-  `package.json`, not this one.** To develop the worker in-project instead, copy
-  `hello-pear-worker/index.js` into `workers/main.js`; its Node-builtin usage then needs
-  an `imports` entry here, and its dependencies become this repo's dependencies.
+- `workers/main.js` copies installed `hello-pear-worker` 1.1.0 and directly requires
+  `pear-mobile`. Copying loses the package's mobile import remap, so retaining the
+  desktop `pear-runtime` require would be incorrect. Its direct dependencies are
+  declared at the original lockfile versions.
+- Autopass lives in `workers/notebook.js` with a Corestore at
+  `path.join(pear.storage, 'relay', 'notebook')`, separate from the updater store.
+  Startup awaits `pass.ready()`. Requests are validated in `shared/protocol.js` and
+  dispatched by `workers/requests.js`; mutations and list snapshots are serialized.
+  `get()` returns `{ value, file }` or null; `list()` is consumed with `for await`.
 - `bare-pack` runs with `--linked` and four `--host` targets, so native addons resolve
   to `linked:` specifiers that `react-native-bare-kit` has prelinked as xcframeworks /
   `.so`s. Adding a worker dependency with a native addon that BareKit does not already
@@ -50,18 +49,20 @@ facts.
   a global `AppState` listener that calls `suspend()` on `background` and `resume()` on
   `active` for every live worklet. Backgrounded P2P work stops; do not assume the swarm
   keeps replicating while the app is not foregrounded.
-- **Nothing terminates the worklet.** `App.tsx`'s effect cleanup destroys the pipe but
-  never calls `worklet.terminate()`, and the effect holds no reference to the worklet —
-  `PearRuntime.run()` returns only the IPC. Every effect re-run (Fast Refresh, a remount)
-  starts another worklet against the same storage directory, so two Corestores contend
-  for the same files. Restart the app rather than trusting a hot reload when debugging
-  worker behavior.
-- The pipe protocol is plain UTF-8 strings matched by exact equality. The worker
-  `console.log`s any frame it does not recognize; `App.tsx` silently drops any frame it
-  does not recognize, including the `Hello from worker` greeting the worker sends on
-  every boot.
+- `PearRuntime.run()` exposes only IPC, not a Worklet handle. The application-lifetime
+  session is retained on `globalThis` to prevent a second worker on component remount
+  or Fast Refresh. Screen cleanup removes subscriptions/refresher callbacks, not the
+  shared pipe. Disconnection rejects pending requests and requires a full app restart;
+  never spawn a replacement worker against a store whose owner may still be alive.
+- Pipe close/graceful goodbye invoke idempotent worker cleanup, close Autopass and its
+  Corestore, and preserve cleanup of the template updater/swarm/store. Forced OS
+  termination cannot guarantee JS cleanup; restart persistence must be tested.
+- Pear control strings remain separate from JSON application frames on the same pipe.
+  The client correlates IDs, validates results, bounds waits, and coalesces list refreshes.
+  An Autopass `update` is a local-view change, never a remote delivery acknowledgment.
+  See `docs/PHASE2.md` for schemas, limits, and actual runtime evidence.
 - `console.log` inside the worklet does not reach the Metro console — BareKit writes it
-  to the system log (`bare` identifier): `xcrun simctl spawn booted log stream` on iOS,
+  to the system log (on this emulator the process tag is `pearreactnative`; also check `bare`): `xcrun simctl spawn booted log stream` on iOS,
   `adb logcat` on Android. A worker that dies at boot therefore looks like a UI that
   simply never updates.
 - **A stall is usually the network, not the code, and the two look identical.** An

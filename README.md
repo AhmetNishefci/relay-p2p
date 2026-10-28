@@ -1,6 +1,7 @@
 > **Assessment baseline:** imported from upstream commit `4ad3f8df5b5f20ce7621c42457795d53b2248c9b`.
 > See [Android baseline setup and evidence](docs/PHASE1.md) and [AI assistance disclosure](docs/AI_USAGE.md).
-> Relay and Autopass features are not implemented in this phase.
+> [Phase 2](docs/PHASE2.md) adds the persistent Autopass/IPC foundation and a minimal verification UI.
+> Pairing, acknowledgment handoffs, and final Relay design are not implemented yet.
 
 # hello-pear-react-native <a name="hello-pear-react-native"></a>
 
@@ -131,7 +132,7 @@ Committing a real development link is safe — the link only selects which drive
 npm run bundle:bare
 ```
 
-Packs the worker for the BareKit runtime with [bare-pack][bare-pack], targeting iOS arm64, the iOS arm64 and x64 simulators, and Android arm64. The output, `src/worker.bundle.js`, is gitignored and is imported directly by `src/App.tsx`. Rerun it after every change to `workers/main.js` or to a package the worker imports: nothing rebuilds it automatically, and a stale bundle fails silently because the app still boots and the UI still looks normal.
+Packs the worker for the BareKit runtime with [bare-pack][bare-pack], targeting iOS arm64, the iOS arm64 and x64 simulators, and Android arm64. The output, `src/worker.bundle.js`, is gitignored and is imported by `src/worker/runtime.ts`. Rerun it after every change to `workers/main.js` or to a package the worker imports: nothing rebuilds it automatically, and a stale bundle fails silently because the app still boots and the UI still looks normal.
 
 ### Run <a name="run"></a>
 
@@ -204,7 +205,10 @@ The worklet keeps `pear-runtime/corestore`, `pear-runtime/next/<length>.<fork>/`
 
 ### Workers <a name="workers"></a>
 
-The worker body lives in the [hello-pear-worker][hello-pear-worker] package so that one implementation serves both this template and the desktop templates:
+Upstream ships its worker in [hello-pear-worker][hello-pear-worker]. This assessment
+copies its installed 1.1.0 body into `workers/main.js`, switches its runtime require
+to `pear-mobile`, and adds the isolated Autopass service. The snippet below describes
+the original template entry; see [Phase 2](docs/PHASE2.md) for the current worker:
 
 ```js
 require('hello-pear-worker')
@@ -395,7 +399,7 @@ Store review can take days, and a payload staged during that window must not req
 
 ## CI <a name="ci"></a>
 
-`.github/workflows/ci.yaml` runs `npm run lint` on Ubuntu and `npm test` on a Bare base image for pushes to `main` and pull requests targeting `main`. It does not build the app, run prebuild, or exercise the worker bundle, and there are no unit tests.
+`.github/workflows/ci.yaml` runs `npm run lint` on Ubuntu and `npm test` on a Bare base image for pushes to `main` and pull requests targeting `main`. It does not build the app, run prebuild, or exercise the worker bundle, and local protocol/client/Autopass foundation tests run through `npm test`.
 
 `.github/workflows/publish.yml` publishes to npm on any `v*` tag — the tag shape `npm version` creates. This package is `private: true`, so such a tag produces a failing release job rather than a publish.
 
@@ -413,7 +417,8 @@ Signed native builds are not configured here; [hello-pear-electron: CI Configura
 - `npm run update` - `bundle:bare`, `bundle:react-native` and `build` in sequence
 - `npm run lint` - `lunte`; does not check formatting
 - `npm run format` - `prettier . --write`; does not fix lint issues
-- `npm test` - `prettier . --check && lunte`
+- `npm test` - formatting, lint, and `npm run test:foundation`
+- `npm run test:foundation` - Node protocol/client tests and real local Autopass integration tests
 
 ## Troubleshooting <a name="troubleshooting"></a>
 
