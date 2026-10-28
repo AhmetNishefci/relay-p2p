@@ -2,7 +2,8 @@
 
 Relay is a local-first shared field notebook built from the pinned Holepunch
 Expo/React Native template. Its original demo UI is replaced by welcome/join,
-notebook, editor, entry/handoff and sharing screens; see `docs/PHASE5.md`. The
+notebook, activity, editor, entry/handoff and sharing screens; see `docs/PHASE5.md`
+and `docs/PHASE8.md`. The
 template's **peer-to-peer OTA updates** remain intact (no update server). Unlike the
 desktop siblings, an OTA here replaces the **JavaScript bundle** the app boots from — native code still ships
 through the App Store and Play Store, so this template carries a second version gate

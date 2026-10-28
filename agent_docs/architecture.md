@@ -4,7 +4,7 @@
 > startup, IPC or bundling. Only non-obvious, code-verified facts — the code is the
 > reference for everything else. Index: [AGENTS.md](../AGENTS.md).
 
-React Native screens (`src/App.tsx`, sharing/handoff components) →
+React Native screens (`src/App.tsx`, sharing/handoff/activity components) →
 `src/useNotebook.ts` (one mounted controller, coalesced entry snapshots) → one app-lifetime client (`src/worker/runtime.ts`)
 ↔ `FramedStream` over BareKit IPC ↔ Bare worker (`workers/main.js`: copied updater
 scaffolding plus an isolated Autopass notebook). The code is small — read it for the wiring; below are only the non-obvious
@@ -55,6 +55,15 @@ facts.
   to `linked:` specifiers that `react-native-bare-kit` has prelinked as xcframeworks /
   `.so`s. Adding a worker dependency with a native addon that BareKit does not already
   vendor will bundle fine and then fail to link at runtime.
+- `src/activity.js` projects the existing current entry/acknowledgment snapshot into
+  activity rows; it stores no event history and adds no worker subscription or IPC
+  operation. Orphans disappear with their entries. Device timestamps determine display
+  order only. `NotebookActivity.tsx` virtualizes those rows and keeps row props scalar;
+  filter state lives above the keyed screen so detail/back preserves the filter.
+- Android top padding is refreshed after root layout from RN's existing
+  `StatusBarManager` TurboModule. `StatusBar.currentHeight` is cached at import time
+  and can be zero before native window insets exist on a cold release launch. This
+  is platform-module use, not a custom native module; no native dependency changed.
 - Screen presentation is keyed by route to reset scroll/press state. The controller
   stays mounted above that subtree; navigation does not create a worklet or replace
   the FramedStream. UI mutations use a synchronous ref guard in addition to disabled

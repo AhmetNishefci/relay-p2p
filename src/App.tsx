@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   Keyboard,
@@ -15,26 +15,52 @@ import {
   Text,
   TextInput,
   View,
-  Pressable
+  Pressable,
+  TurboModuleRegistry
 } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useNotebook } from './useNotebook'
 import { PairingPanel } from './PairingPanel'
 import { Acknowledgments } from './Acknowledgments'
+import { NotebookActivity } from './NotebookActivity'
+import type { ActivityFilter } from './activity'
 import { Brand, Button, Header, Notice, colors, ui } from './ui'
+import type { TurboModule } from 'react-native'
 import type { Entry } from '../shared/protocol'
+
+interface StatusBarMetrics extends TurboModule {
+  getConstants(): { HEIGHT: number }
+}
 
 const ScreenRoot = Platform.OS === 'ios' ? SafeAreaView : View
 
-type Screen = 'home' | 'editor' | 'detail' | 'sharing' | 'join'
+type Screen = 'home' | 'editor' | 'detail' | 'sharing' | 'join' | 'activity'
 const dateOf = (date: number) =>
   new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 
 export default function App() {
+  const [topInset, setTopInset] = useState(
+    Platform.OS === 'android' ? Math.max(NativeStatusBar.currentHeight ?? 0, 24) : 0
+  )
+  const updateTopInset = useCallback(() => {
+    if (Platform.OS !== 'android') return
+    // RN caches currentHeight at module load, sometimes before window insets exist.
+    // Read the existing platform module after layout rather than caching a cold-start zero.
+    const height =
+      TurboModuleRegistry.get<StatusBarMetrics>('StatusBarManager')?.getConstants().HEIGHT
+    if (typeof height === 'number' && Number.isFinite(height) && height > 0) setTopInset(height)
+  }, [])
   const notebook = useNotebook()
   const { worker, entries, acknowledgments, localWriterKey, busy } = notebook
   const [screen, setScreen] = useState<Screen>('home')
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [detailReturn, setDetailReturn] = useState<'home' | 'activity'>('home')
+  const openActivityEntry = useCallback((id: string) => {
+    setSelectedId(id)
+    setDetailReturn('activity')
+    setScreen('detail')
+  }, [])
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [refreshing, setRefreshing] = useState(false)
@@ -67,7 +93,7 @@ export default function App() {
           }
         ]
       )
-    } else go('home')
+    } else go(screen === 'detail' ? detailReturn : 'home')
   }
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -79,6 +105,7 @@ export default function App() {
   })
 
   function openEntry(entry: Entry) {
+    setDetailReturn('home')
     setSelectedId(entry.id)
     go('detail')
   }
@@ -90,6 +117,7 @@ export default function App() {
       setTitle('')
       setBody('')
       setSelectedId(entry.id)
+      setDetailReturn('home')
       setScreen('detail')
     }
   }
@@ -115,7 +143,7 @@ export default function App() {
           text: 'Remove entry',
           style: 'destructive',
           onPress: async () => {
-            if (await notebook.removeEntry(entry.id)) setScreen('home')
+            if (await notebook.removeEntry(entry.id)) setScreen(detailReturn)
           }
         }
       ]
@@ -241,6 +269,30 @@ export default function App() {
         </ScrollView>
       </>
     )
+  } else if (screen === 'activity') {
+    content = (
+      <NotebookActivity
+        entries={entries}
+        acknowledgments={acknowledgments}
+        loaded={notebook.loaded}
+        writable={worker.writable}
+        filter={activityFilter}
+        onFilter={setActivityFilter}
+        onBack={back}
+        onOpen={openActivityEntry}
+        refreshing={refreshing}
+        onRefresh={async () => {
+          setRefreshing(true)
+          try {
+            await notebook.refresh()
+          } finally {
+            setRefreshing(false)
+          }
+        }}
+        notices={notices}
+        hasSkipped={notebook.skipped > 0 || notebook.skippedAcknowledgments > 0}
+      />
+    )
   } else if (screen === 'sharing') {
     content = (
       <>
@@ -350,7 +402,10 @@ export default function App() {
             <View style={ui.card}>
               <Text style={ui.title}>This entry is no longer here.</Text>
               <Text style={ui.body}>It may have been removed from the shared notebook.</Text>
-              <Button label='Back to notebook' onPress={() => go('home')} />
+              <Button
+                label={detailReturn === 'activity' ? 'Back to activity' : 'Back to notebook'}
+                onPress={() => go(detailReturn)}
+              />
             </View>
           )}
         </ScrollView>
@@ -402,6 +457,12 @@ export default function App() {
                   {worker.writable ? 'Contributor' : 'Viewer'}
                 </Text>
               </View>
+              <Button
+                label='Notebook activity ↗'
+                variant='secondary'
+                onPress={() => go('activity')}
+                testID='open-activity'
+              />
               {notices}
               {(notebook.skipped > 0 || notebook.skippedAcknowledgments > 0) && (
                 <Notice
@@ -491,7 +552,7 @@ export default function App() {
     )
   }
   return (
-    <ScreenRoot style={styles.safe}>
+    <ScreenRoot style={[styles.safe, { paddingTop: topInset }]} onLayout={updateTopInset}>
       <StatusBar style='dark' />
       <KeyboardAvoidingView
         key={ready ? screen : 'welcome'}
@@ -508,7 +569,6 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.paper,
-    paddingTop: Platform.OS === 'android' ? (NativeStatusBar.currentHeight ?? 24) : 0,
     paddingBottom: Platform.OS === 'android' ? 28 : 0
   },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
