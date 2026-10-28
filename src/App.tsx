@@ -1,349 +1,538 @@
-/* global __DEV__ */
-
-import { useState, useEffect, useRef } from 'react'
-import { reloadAppAsync } from 'expo-modules-core'
+import { useEffect, useState } from 'react'
+import {
+  ActivityIndicator,
+  Keyboard,
+  Alert,
+  BackHandler,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar as NativeStatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  Pressable
+} from 'react-native'
 import { StatusBar } from 'expo-status-bar'
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
-import { version } from '../package.json'
-import type { Entry, Acknowledgment, WorkerStatus } from '../shared/protocol'
-import { getWorkerSession } from './worker/runtime'
-import { createListRefresher } from './worker/client'
+import { useNotebook } from './useNotebook'
 import { PairingPanel } from './PairingPanel'
 import { Acknowledgments } from './Acknowledgments'
+import { Brand, Button, Header, Notice, colors, ui } from './ui'
+import type { Entry } from '../shared/protocol'
 
-const messageOf = (error: unknown) => (error instanceof Error ? error.message : 'Operation failed.')
+const ScreenRoot = Platform.OS === 'ios' ? SafeAreaView : View
+
+type Screen = 'home' | 'editor' | 'detail' | 'sharing' | 'join'
+const dateOf = (date: number) =>
+  new Date(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 
 export default function App() {
-  const [worker, setWorker] = useState<WorkerStatus>({ state: 'starting', writable: false })
-  const [entries, setEntries] = useState<Entry[]>([])
-  const [acknowledgments, setAcknowledgments] = useState<Acknowledgment[]>([])
-  const [localWriterKey, setLocalWriterKey] = useState('')
-  const [pendingAcknowledgment, setPendingAcknowledgment] = useState<string | null>(null)
-  const [skippedAcknowledgments, setSkippedAcknowledgments] = useState(0)
+  const notebook = useNotebook()
+  const { worker, entries, acknowledgments, localWriterKey, busy } = notebook
+  const [screen, setScreen] = useState<Screen>('home')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
-  const [error, setError] = useState('')
-  const [feedback, setFeedback] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [updates, setUpdates] = useState(0)
-  const [skipped, setSkipped] = useState(0)
-  const [pearStatus, setPearStatus] = useState('')
-  const [pearError, setPearError] = useState('')
-  const shouldReload = useRef(false)
-  const refreshRef = useRef<(() => Promise<void>) | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const ready = worker.state === 'ready'
+  const selected = entries.find((entry) => entry.id === selectedId)
+  const dirty = title.length > 0 || body.length > 0
 
-  useEffect(() => {
-    let disposed = false
-    let ready = false
-    let startupTimer: ReturnType<typeof setTimeout> | undefined
-    try {
-      const { client, subscribeControl } = getWorkerSession()
-      const refresher = createListRefresher(
-        () => client.request('entries.list', {}),
-        (result) => {
-          setEntries(result.entries)
-          setSkipped(result.skipped)
-          setAcknowledgments(result.acknowledgments)
-          setLocalWriterKey(result.localWriterKey)
-          setSkippedAcknowledgments(result.skippedAcknowledgments)
-        },
-        (err) => setError(messageOf(err))
-      )
-      refreshRef.current = refresher.refresh
-      const onReady = (status: WorkerStatus) => {
-        ready = status.state === 'ready'
-        clearTimeout(startupTimer)
-        setWorker(status)
-        if (ready) setError('')
-        if (ready) refresher.refresh()
-        else {
-          setEntries([])
-          setSkipped(0)
-          setAcknowledgments([])
-          setLocalWriterKey('')
-          setSkippedAcknowledgments(0)
-        }
-      }
-      const unsubscribe = client.subscribe((event) => {
-        if (event.event === 'ready') onReady(event.payload)
-        else if (event.event === 'changed') {
-          setUpdates((count) => count + 1)
-          if (ready) refresher.refresh()
-        } else {
-          setError(event.payload.message)
-          if (
-            event.payload.code === 'DISCONNECTED' ||
-            event.payload.code === 'INIT_FAILED' ||
-            event.payload.code === 'STORAGE_ERROR'
-          ) {
-            setWorker({ state: 'failed', writable: false })
+  function go(next: Screen) {
+    Keyboard.dismiss()
+    notebook.clearFeedback()
+    setScreen(next)
+  }
+  function back() {
+    if (busy) return
+    if (screen === 'editor' && dirty) {
+      Alert.alert('Discard this draft?', 'This entry has not been saved.', [
+        { text: 'Keep writing', style: 'cancel' },
+        {
+          text: 'Discard draft',
+          style: 'destructive',
+          onPress: () => {
+            setTitle('')
+            setBody('')
+            go('home')
           }
         }
-      })
-      const unsubscribeControl = subscribeControl((parsed) => {
-        if (parsed === 'updating' || parsed === 'updated') setPearStatus(parsed)
-        if (parsed === 'minver-required') setPearStatus('incompatible')
-        if (parsed.startsWith('pear:updateFailed')) {
-          shouldReload.current = false
-          setPearError(parsed.slice('pear:updateFailed '.length) || 'Update failed')
-          setPearStatus('failed')
-        }
-        if (parsed === 'pear:updateApplied') {
-          if (shouldReload.current) {
-            reloadAppAsync('Pear update applied').catch((err) => {
-              setPearError(messageOf(err))
-              setPearStatus('failed')
-            })
-          } else setPearStatus('')
-        }
-      })
-      startupTimer = setTimeout(() => {
-        if (!ready) setError('Worker startup timed out. Check status or restart the app.')
-      }, 30_000)
-      client
-        .request('status', {})
-        .then((status) => {
-          if (disposed) return
-          if (!ready || status.state === 'ready') onReady(status)
-        })
-        .catch((err) => {
-          if (!disposed) setError(messageOf(err))
-        })
-      return () => {
-        disposed = true
-        clearTimeout(startupTimer)
-        unsubscribe()
-        unsubscribeControl()
-        refresher.close()
-        refreshRef.current = null
-        // Session lifetime belongs to the application, not a React component mount.
-      }
-    } catch (err) {
-      setWorker({ state: 'failed', writable: false })
-      setError(messageOf(err))
-    }
-  }, [])
+      ])
+    } else go('home')
+  }
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (screen === 'home') return false
+      back()
+      return true
+    })
+    return () => subscription.remove()
+  })
 
-  async function addEntry() {
-    if (busy) return
-    setBusy(true)
-    setError('')
-    setFeedback('')
-    try {
-      await getWorkerSession().client.request('entries.add', { title, body })
+  function openEntry(entry: Entry) {
+    setSelectedId(entry.id)
+    go('detail')
+  }
+  async function save() {
+    if (!title.trim() || busy) return
+    Keyboard.dismiss()
+    const entry = await notebook.addEntry(title, body)
+    if (entry) {
       setTitle('')
       setBody('')
-      setFeedback('Saved on this device.')
-      await refreshRef.current?.()
-    } catch (err) {
-      setError(messageOf(err))
-    } finally {
-      setBusy(false)
+      setSelectedId(entry.id)
+      setScreen('detail')
     }
   }
-
-  async function removeEntry(id: string) {
-    if (busy) return
-    setBusy(true)
-    setError('')
-    setFeedback('')
-    try {
-      await getWorkerSession().client.request('entries.remove', { id })
-      setFeedback('Removed from this notebook view. Retained copies are not erased.')
-      await refreshRef.current?.()
-    } catch (err) {
-      setError(messageOf(err))
-    } finally {
-      setBusy(false)
-    }
+  function remove(entry: Entry) {
+    Alert.alert(
+      'Remove this entry?',
+      'It will disappear from this shared notebook. Retained copies and acknowledgment records are not erased.',
+      [
+        { text: 'Keep entry', style: 'cancel' },
+        {
+          text: 'Remove entry',
+          style: 'destructive',
+          onPress: async () => {
+            if (await notebook.removeEntry(entry.id)) setScreen('home')
+          }
+        }
+      ]
+    )
   }
-
-  async function checkStatus() {
-    setError('')
-    try {
-      const status = await getWorkerSession().client.request('status', {})
-      setWorker(status)
-      if (status.state === 'ready') await refreshRef.current?.()
-      if (status.state === 'failed') {
-        setError('Notebook failed to initialize. Restart the app; data is retained.')
-      }
-    } catch (err) {
-      setError(messageOf(err))
-    }
-  }
-
-  async function acknowledgeEntry(entryId: string) {
-    if (busy) return
-    setBusy(true)
-    setPendingAcknowledgment(entryId)
-    setError('')
-    setFeedback('')
-    try {
-      const result = await getWorkerSession().client.request('entries.acknowledge', { entryId })
-      const acknowledgment = result.acknowledgment
-      setAcknowledgments((current) => [
-        ...current.filter(
-          (record) =>
-            record.entryId !== acknowledgment.entryId ||
-            record.writerKey !== acknowledgment.writerKey
-        ),
-        acknowledgment
-      ])
-      setFeedback(
-        result.alreadyRecorded
-          ? 'Acknowledgment already recorded for this device.'
-          : 'Acknowledgment recorded on this device.'
-      )
-      await refreshRef.current?.()
-    } catch (err) {
-      setError(messageOf(err))
-    } finally {
-      setPendingAcknowledgment(null)
-      setBusy(false)
-    }
-  }
-
-  const pearLabel =
-    pearStatus === 'incompatible'
-      ? `Update available on the ${Platform.OS === 'ios' ? 'App Store' : 'Play Store'}`
-      : pearStatus === 'failed'
-        ? pearError
-        : `Pear v${version} ${pearStatus}`
-
-  return (
-    <View style={styles.container}>
-      <StatusBar style='dark' />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps='handled'>
-        <Text style={styles.heading}>Relay foundation</Text>
-        <Text testID='worker-status'>
-          Worker: {worker.state} · {worker.writable ? 'writable' : 'not writable'}
-        </Text>
-        <Text testID='update-count'>
-          Updates: {updates} · Entries: {entries.length}
-        </Text>
-        <Text>No remote delivery status is available.</Text>
-        <Text>Acknowledgments are unverified device-key records, not proof of reading.</Text>
-        <PairingPanel status={worker} />
-        <Pressable accessibilityRole='button' onPress={checkStatus} style={styles.button}>
-          <Text>Check worker</Text>
-        </Pressable>
-        {!!error && (
-          <Text accessibilityRole='alert' style={styles.error} testID='error'>
-            {error}
-          </Text>
-        )}
-        {!!feedback && (
-          <Text accessibilityLiveRegion='polite' testID='feedback'>
-            {feedback}
-          </Text>
-        )}
-        <TextInput
-          accessibilityLabel='Entry title'
-          testID='entry-title'
-          placeholder='Title'
-          value={title}
-          onChangeText={setTitle}
-          maxLength={120}
-          style={styles.input}
-        />
-        <TextInput
-          accessibilityLabel='Entry body'
-          testID='entry-body'
-          placeholder='Body'
-          value={body}
-          onChangeText={setBody}
-          maxLength={8000}
-          multiline
-          style={styles.input}
-        />
-        <Pressable
-          accessibilityRole='button'
-          testID='add-entry'
-          disabled={busy || worker.state !== 'ready' || !worker.writable}
-          onPress={addEntry}
-          style={styles.button}
-        >
-          <Text>{busy ? 'Working…' : 'Add entry'}</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole='button'
-          onPress={() => {
-            setError('')
-            refreshRef.current?.()
-          }}
-          disabled={worker.state !== 'ready'}
-          style={styles.button}
-        >
-          <Text>Refresh list</Text>
-        </Pressable>
-        {skipped > 0 && (
-          <Text style={styles.error}>{skipped} unsupported or malformed entries were skipped.</Text>
-        )}
-        {skippedAcknowledgments > 0 && (
-          <Text style={styles.error}>
-            {skippedAcknowledgments} unsupported or malformed acknowledgment records were skipped.
-          </Text>
-        )}
-        {entries.length === 0 && <Text>No entries.</Text>}
-        {entries.map((entry) => (
-          <View key={entry.id} style={styles.entry} testID={`entry-${entry.id}`}>
-            <Text style={styles.entryTitle}>{entry.title}</Text>
-            <Text>{entry.body}</Text>
-            <Text selectable>{entry.id}</Text>
-            <Acknowledgments
-              entryId={entry.id}
-              title={entry.title}
-              records={acknowledgments.filter((record) => record.entryId === entry.id)}
-              localWriterKey={localWriterKey}
-              writable={worker.writable}
-              busy={busy}
-              pending={pendingAcknowledgment === entry.id}
-              onAcknowledge={() => acknowledgeEntry(entry.id)}
-            />
-            <Pressable
-              accessibilityRole='button'
-              accessibilityLabel={`Remove ${entry.title}`}
-              disabled={busy || !worker.writable}
-              onPress={() => removeEntry(entry.id)}
-              style={styles.button}
-            >
-              <Text>Remove</Text>
-            </Pressable>
-          </View>
-        ))}
-        <Text>{pearLabel}</Text>
-        {(pearStatus === 'updated' || pearStatus === 'applying') && (
-          <Pressable
-            accessibilityRole='button'
-            disabled={pearStatus === 'applying'}
-            style={styles.button}
-            onPress={() => {
-              setPearStatus('applying')
-              try {
-                shouldReload.current = true
-                getWorkerSession().writeControl('pear:applyUpdate')
-              } catch (err) {
-                shouldReload.current = false
-                setPearError(messageOf(err))
-                setPearStatus('failed')
-              }
-            }}
-          >
-            <Text>{pearStatus === 'applying' ? 'Updating…' : 'Apply update'}</Text>
-          </Pressable>
-        )}
-      </ScrollView>
+  const notices = (
+    <View style={styles.notices}>
+      {!!notebook.error && (
+        <View style={ui.stack}>
+          <Notice text={notebook.error} error />
+          <Button
+            label='Check again'
+            variant='quiet'
+            onPress={notebook.checkStatus}
+            disabled={busy}
+          />
+        </View>
+      )}
+      {!!notebook.feedback && <Notice text={notebook.feedback} />}
     </View>
+  )
+  const updateNotice = notebook.pearStatus && (
+    <View style={ui.content}>
+      <Notice
+        text={
+          notebook.pearStatus === 'incompatible'
+            ? `Get the latest Relay version from the ${Platform.OS === 'ios' ? 'App Store' : 'Play Store'}.`
+            : notebook.pearStatus === 'failed'
+              ? notebook.pearError
+              : notebook.pearStatus === 'updated'
+                ? 'An app update is ready.'
+                : 'Preparing an app update…'
+        }
+        error={notebook.pearStatus === 'failed'}
+      />
+      {(notebook.pearStatus === 'updated' || notebook.pearStatus === 'applying') && (
+        <Button
+          label={notebook.pearStatus === 'applying' ? 'Updating…' : 'Apply update'}
+          pending={notebook.pearStatus === 'applying'}
+          onPress={notebook.applyUpdate}
+        />
+      )}
+    </View>
+  )
+
+  let content
+  if (worker.state === 'starting') {
+    content = (
+      <View style={[ui.content, styles.center]}>
+        <Brand />
+        <ActivityIndicator color={colors.teal} />
+        <Text style={ui.body}>Opening your notebook…</Text>
+        {notices}
+      </View>
+    )
+  } else if (!ready) {
+    content = (
+      <>
+        {screen === 'join' && worker.state === 'idle' && (
+          <Header title='Join a notebook' onBack={back} />
+        )}
+        <ScrollView
+          contentContainerStyle={[ui.content, { flexGrow: 1 }]}
+          keyboardShouldPersistTaps='handled'
+        >
+          <Brand />
+          {worker.state === 'idle' && screen !== 'join' ? (
+            <>
+              <View style={styles.welcomeArt} accessible={false}>
+                <View style={styles.paperBack} />
+                <View style={styles.paperFront}>
+                  <Text style={ui.eyebrow}>FIELD NOTE / 001</Text>
+                  <Text style={[ui.heading, { fontSize: 32 }]}>
+                    A little context.{'\n'}A clear handoff.
+                  </Text>
+                  <View style={ui.divider} />
+                  <Text style={ui.caption}>Captured here. Shared directly.</Text>
+                </View>
+              </View>
+              <Text
+                accessibilityRole='header'
+                style={[ui.heading, { fontSize: 44, lineHeight: 50 }]}
+              >
+                Good work,{'\n'}passed along.
+              </Text>
+              <Text style={ui.body}>
+                A shared field notebook with direct peer exchange and explicit acknowledgments.
+              </Text>
+              <Text style={ui.caption}>
+                Save on your device, even offline. Peer exchange needs a connection and both apps
+                open.
+              </Text>
+              <PairingPanel status={worker} mode='welcome' onJoin={() => go('join')} />
+            </>
+          ) : (
+            <>
+              <Text accessibilityRole='header' style={ui.heading}>
+                {worker.state === 'joining'
+                  ? 'Making a connection.'
+                  : worker.state === 'idle'
+                    ? 'Bring your notebook.'
+                    : 'Your notes are retained.'}
+              </Text>
+              <PairingPanel status={worker} mode='join' />
+              {worker.state === 'failed' || worker.state === 'closed' ? (
+                <Text style={ui.body}>
+                  Close and reopen Relay to start again. Existing notebook data will be kept.
+                </Text>
+              ) : null}
+            </>
+          )}
+          {notices}
+          {!ready && worker.state !== 'idle' && worker.state !== 'joining' && (
+            <Button label='Check again' variant='secondary' onPress={notebook.checkStatus} />
+          )}
+        </ScrollView>
+      </>
+    )
+  } else if (screen === 'sharing') {
+    content = (
+      <>
+        <Header title='Sharing & access' onBack={back} />
+        <ScrollView keyboardShouldPersistTaps='handled' contentContainerStyle={ui.content}>
+          <PairingPanel status={worker} mode='sharing' />
+          {updateNotice}
+        </ScrollView>
+      </>
+    )
+  } else if (screen === 'editor') {
+    content = (
+      <>
+        <Header title='New entry' onBack={back} />
+        <ScrollView keyboardShouldPersistTaps='handled' contentContainerStyle={ui.content}>
+          <Text style={ui.eyebrow}>CAPTURE THE CONTEXT</Text>
+          <Text style={ui.caption}>What should the next person know?</Text>
+          <Text style={ui.label}>Title · required</Text>
+          <TextInput
+            accessibilityLabel='Entry title'
+            testID='entry-title'
+            placeholder='Give it a clear title'
+            placeholderTextColor={colors.muted}
+            value={title}
+            onChangeText={setTitle}
+            maxLength={120}
+            autoFocus
+            editable={!busy}
+            style={[styles.editorTitle, { minHeight: 64 }]}
+            multiline
+          />
+          <View style={ui.divider} />
+          <Text style={ui.label}>Field notes</Text>
+          <TextInput
+            accessibilityLabel='Entry body'
+            testID='entry-body'
+            placeholder='Observations, decisions, and details…'
+            placeholderTextColor={colors.muted}
+            value={body}
+            onChangeText={setBody}
+            maxLength={8000}
+            multiline
+            textAlignVertical='top'
+            editable={!busy}
+            style={styles.editorBody}
+          />
+          <Text style={ui.caption}>
+            {title.length}/120 title · {body.length}/8,000 notes
+          </Text>
+          {notices}
+        </ScrollView>
+        <View style={ui.footer}>
+          <Button
+            label={busy ? 'Saving…' : 'Save entry'}
+            pending={busy}
+            disabled={!title.trim() || !worker.writable}
+            onPress={save}
+            testID='add-entry'
+          />
+          <Text style={[ui.caption, { textAlign: 'center' }]}>
+            Saves on this device. Acknowledgment is a separate action.
+          </Text>
+        </View>
+      </>
+    )
+  } else if (screen === 'detail') {
+    content = (
+      <>
+        <Header title='Field entry' onBack={back} />
+        <ScrollView contentContainerStyle={ui.content}>
+          {selected ? (
+            <>
+              <Text style={ui.eyebrow}>
+                FIELD NOTE · {dateOf(selected.createdAt).toUpperCase()}
+              </Text>
+              <Text accessibilityRole='header' selectable style={ui.heading} testID='detail-title'>
+                {selected.title}
+              </Text>
+              <View style={ui.divider} />
+              <Text selectable style={styles.detailBody}>
+                {selected.body || 'No additional notes.'}
+              </Text>
+              {notices}
+              <Acknowledgments
+                entryId={selected.id}
+                title={selected.title}
+                records={acknowledgments.filter((ack) => ack.entryId === selected.id)}
+                localWriterKey={localWriterKey}
+                writable={worker.writable}
+                busy={busy}
+                pending={notebook.pendingAcknowledgment === selected.id}
+                onAcknowledge={() => notebook.acknowledgeEntry(selected.id)}
+              />
+              {worker.writable && (
+                <Button
+                  label='Remove entry'
+                  variant='danger'
+                  disabled={busy}
+                  onPress={() => remove(selected)}
+                  testID='remove-entry'
+                />
+              )}
+            </>
+          ) : (
+            <View style={ui.card}>
+              <Text style={ui.title}>This entry is no longer here.</Text>
+              <Text style={ui.body}>It may have been removed from the shared notebook.</Text>
+              <Button label='Back to notebook' onPress={() => go('home')} />
+            </View>
+          )}
+        </ScrollView>
+      </>
+    )
+  } else {
+    content = (
+      <>
+        <View style={[ui.between, styles.homeHeader]}>
+          <Brand />
+          <Button
+            label='Share'
+            variant='secondary'
+            onPress={() => go('sharing')}
+            testID='open-sharing'
+          />
+        </View>
+        <FlatList
+          data={entries}
+          keyExtractor={(entry) => entry.id}
+          contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl
+              tintColor={colors.teal}
+              colors={[colors.teal]}
+              refreshing={refreshing}
+              onRefresh={async () => {
+                setRefreshing(true)
+                try {
+                  await notebook.refresh()
+                } finally {
+                  setRefreshing(false)
+                }
+              }}
+            />
+          }
+          ListHeaderComponent={
+            <View style={styles.listIntro}>
+              <Text style={ui.eyebrow}>YOUR SHARED FIELD BOOK</Text>
+              <Text accessibilityRole='header' style={ui.heading}>
+                Field notebook
+              </Text>
+              <View style={ui.between}>
+                <Text style={ui.caption}>
+                  {entries.length} {entries.length === 1 ? 'entry' : 'entries'} · Stored on this
+                  device
+                </Text>
+                <Text testID='access-role' style={ui.badge}>
+                  {worker.writable ? 'Contributor' : 'Viewer'}
+                </Text>
+              </View>
+              {notices}
+              {(notebook.skipped > 0 || notebook.skippedAcknowledgments > 0) && (
+                <Notice
+                  error
+                  text='Some records use an unsupported format and cannot be displayed.'
+                />
+              )}
+            </View>
+          }
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              {notebook.loaded ? (
+                <>
+                  <Text style={styles.emptyNumber}>01</Text>
+                  <Text style={ui.title}>Every handoff starts with a note.</Text>
+                  <Text style={[ui.body, { textAlign: 'center' }]}>
+                    {worker.writable
+                      ? 'Capture an observation, add context, and invite someone to carry it forward.'
+                      : 'Entries from Contributors will appear here when exchanged with this device.'}
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <ActivityIndicator color={colors.teal} />
+                  <Text style={ui.caption}>Opening entries…</Text>
+                </>
+              )}
+            </View>
+          }
+          renderItem={({ item, index }) => {
+            const count = acknowledgments.filter((ack) => ack.entryId === item.id).length
+            return (
+              <Pressable
+                accessibilityRole='button'
+                accessibilityLabel={`Open entry: ${item.title}. ${count} acknowledgments recorded.`}
+                onPress={() => openEntry(item)}
+                testID={`entry-${item.id}`}
+                style={({ pressed }) => [
+                  styles.entryCard,
+                  pressed && { backgroundColor: colors.pale }
+                ]}
+              >
+                <View style={ui.between}>
+                  <Text style={ui.eyebrow}>NOTE {String(index + 1).padStart(2, '0')}</Text>
+                  <Text style={ui.caption}>{dateOf(item.createdAt)}</Text>
+                </View>
+                <Text style={styles.entryTitle} numberOfLines={3}>
+                  {item.title}
+                </Text>
+                {!!item.body && (
+                  <Text numberOfLines={2} style={ui.caption}>
+                    {item.body}
+                  </Text>
+                )}
+                <View style={ui.between}>
+                  <Text style={[ui.caption, count > 0 && { color: colors.teal }]}>
+                    {count
+                      ? `${count} acknowledgment${count === 1 ? '' : 's'} recorded`
+                      : 'No acknowledgments yet'}
+                  </Text>
+                  <Text style={ui.caption} accessible={false}>
+                    ↗
+                  </Text>
+                </View>
+              </Pressable>
+            )
+          }}
+          ListFooterComponent={
+            <View style={styles.listEnd}>
+              <Text style={ui.caption}>Made for the work between people.</Text>
+              <Text style={[ui.caption, { textAlign: 'center' }]}>
+                Peer exchange happens while connected. Acknowledgments are explicit actions, not
+                delivery receipts.
+              </Text>
+              {updateNotice}
+            </View>
+          }
+        />
+        <View style={ui.footer}>
+          {worker.writable ? (
+            <Button label='+ New entry' onPress={() => go('editor')} testID='new-entry' />
+          ) : (
+            <Text style={[ui.body, { textAlign: 'center' }]}>Viewer access · Read only</Text>
+          )}
+        </View>
+      </>
+    )
+  }
+  return (
+    <ScreenRoot style={styles.safe}>
+      <StatusBar style='dark' />
+      <KeyboardAvoidingView
+        key={ready ? screen : 'welcome'}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={ui.page}
+      >
+        {content}
+      </KeyboardAvoidingView>
+    </ScreenRoot>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  content: { padding: 24, paddingTop: 48, gap: 12 },
-  heading: { fontSize: 24, fontWeight: '700' },
-  input: { borderWidth: 1, borderColor: '#777', borderRadius: 4, padding: 12, color: '#111' },
-  button: { minHeight: 48, padding: 12, backgroundColor: '#e5e7eb', justifyContent: 'center' },
-  error: { color: '#a00000' },
-  entry: { borderTopWidth: 1, borderColor: '#aaa', paddingTop: 12, gap: 8 },
-  entryTitle: { fontSize: 18, fontWeight: '600' }
+  safe: {
+    flex: 1,
+    backgroundColor: colors.paper,
+    paddingTop: Platform.OS === 'android' ? (NativeStatusBar.currentHeight ?? 24) : 0,
+    paddingBottom: Platform.OS === 'android' ? 28 : 0
+  },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  homeHeader: { paddingHorizontal: 24, paddingVertical: 16 },
+  list: { paddingHorizontal: 24, paddingBottom: 24 },
+  listIntro: { gap: 14, paddingTop: 20, paddingBottom: 28 },
+  notices: { gap: 12 },
+  entryCard: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 14,
+    gap: 14
+  },
+  entryTitle: {
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontSize: 25,
+    lineHeight: 33,
+    color: colors.ink
+  },
+  empty: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, gap: 18 },
+  emptyNumber: { fontFamily: 'serif', fontSize: 76, color: colors.teal },
+  listEnd: { paddingVertical: 28, gap: 10, alignItems: 'center' },
+  editorTitle: {
+    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    fontSize: 32,
+    lineHeight: 40,
+    color: colors.ink,
+    padding: 0
+  },
+  editorBody: { fontSize: 18, lineHeight: 29, color: colors.ink, minHeight: 250, padding: 0 },
+  detailBody: { fontSize: 18, lineHeight: 30, color: colors.ink },
+  welcomeArt: { minHeight: 235, justifyContent: 'center', padding: 10, marginVertical: 16 },
+  paperBack: {
+    position: 'absolute',
+    backgroundColor: colors.pale,
+    borderRadius: 18,
+    width: '92%',
+    height: 200,
+    alignSelf: 'center',
+    transform: [{ rotate: '-5deg' }]
+  },
+  paperFront: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 18,
+    padding: 24,
+    gap: 16
+  }
 })

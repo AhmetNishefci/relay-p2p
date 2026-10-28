@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import type { Acknowledgment } from '../shared/protocol'
+import { Button, colors, ui } from './ui'
 
 type Props = {
   entryId: string
@@ -11,7 +12,6 @@ type Props = {
   pending: boolean
   onAcknowledge: () => void
 }
-
 export function Acknowledgments({
   entryId,
   title,
@@ -23,33 +23,54 @@ export function Acknowledgments({
   onAcknowledge
 }: Props) {
   const local = records.some((record) => record.writerKey === localWriterKey)
-  const other = records.filter((record) => record.writerKey !== localWriterKey)
   return (
-    <View style={styles.container} testID={`acknowledgments-${entryId}`}>
-      <Text testID={`ack-count-${entryId}`}>
+    <View style={styles.card} testID={`acknowledgments-${entryId}`}>
+      <Text style={ui.eyebrow}>THE HANDOFF</Text>
+      <Text accessibilityRole='header' style={ui.title} testID={`ack-count-${entryId}`}>
         {records.length} acknowledgment{records.length === 1 ? '' : 's'} recorded
       </Text>
-      {local && <Text testID={`ack-local-${entryId}`}>Acknowledgment record for this device</Text>}
-      {other.map((record) => (
-        <Text key={record.writerKey}>Observed for device key {record.writerKey.slice(0, 12)}</Text>
-      ))}
-      {!writable && <Text>Viewer access cannot acknowledge.</Text>}
-      <Pressable
-        accessibilityRole='button'
-        accessibilityLabel={`Acknowledge ${title}`}
-        testID={`ack-${entryId}`}
-        disabled={busy || !writable || local}
-        onPress={onAcknowledge}
-        style={[styles.button, (busy || !writable || local) && styles.disabled]}
-      >
-        <Text>{pending ? 'Recording…' : local ? 'Recorded for this device' : 'Acknowledge'}</Text>
-      </Pressable>
+      <Text style={ui.body}>
+        Leave an explicit acknowledgment for the people sharing this notebook.
+      </Text>
+      {local && (
+        <Text
+          style={styles.receipt}
+          accessibilityLiveRegion='polite'
+          testID={`ack-local-${entryId}`}
+        >
+          ✓ Acknowledgment recorded for this device
+        </Text>
+      )}
+      {records
+        .filter((record) => record.writerKey !== localWriterKey)
+        .map((record) => (
+          <Text key={record.writerKey} style={ui.caption}>
+            Observed for device {record.writerKey.slice(0, 12)}
+          </Text>
+        ))}
+      {!writable && (
+        <Text style={ui.caption}>
+          Viewer access lets you read entries. Only Contributors can acknowledge.
+        </Text>
+      )}
+      {!local && writable && (
+        <Button
+          label={pending ? 'Recording…' : 'Acknowledge'}
+          accessibilityLabel={`Acknowledge ${title}`}
+          pending={pending}
+          disabled={busy}
+          onPress={onAcknowledge}
+          testID={`ack-${entryId}`}
+        />
+      )}
+      <Text style={ui.caption}>
+        A record is a shared claim, not proof of identity or reading. Other Contributors can change
+        these records.
+      </Text>
     </View>
   )
 }
-
 const styles = StyleSheet.create({
-  container: { gap: 8 },
-  button: { minHeight: 48, padding: 12, justifyContent: 'center', backgroundColor: '#e5e7eb' },
-  disabled: { opacity: 0.5 }
+  card: { backgroundColor: colors.pale, borderRadius: 20, padding: 22, gap: 16 },
+  receipt: { fontSize: 16, lineHeight: 24, color: colors.teal, fontWeight: '600' }
 })
