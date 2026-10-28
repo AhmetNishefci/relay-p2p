@@ -8,6 +8,7 @@ import { version } from '../package.json'
 import type { Entry, WorkerStatus } from '../shared/protocol'
 import { getWorkerSession } from './worker/runtime'
 import { createListRefresher } from './worker/client'
+import { PairingPanel } from './PairingPanel'
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : 'Operation failed.')
 
@@ -42,10 +43,15 @@ export default function App() {
       )
       refreshRef.current = refresher.refresh
       const onReady = (status: WorkerStatus) => {
-        ready = true
+        ready = status.state === 'ready'
         clearTimeout(startupTimer)
         setWorker(status)
-        refresher.refresh()
+        if (ready) setError('')
+        if (ready) refresher.refresh()
+        else {
+          setEntries([])
+          setSkipped(0)
+        }
       }
       const unsubscribe = client.subscribe((event) => {
         if (event.event === 'ready') onReady(event.payload)
@@ -87,8 +93,7 @@ export default function App() {
         .request('status', {})
         .then((status) => {
           if (disposed) return
-          if (status.state === 'ready') onReady(status)
-          else if (!ready) setWorker(status)
+          if (!ready || status.state === 'ready') onReady(status)
         })
         .catch((err) => {
           if (!disposed) setError(messageOf(err))
@@ -175,6 +180,7 @@ export default function App() {
           Updates: {updates} · Entries: {entries.length}
         </Text>
         <Text>No remote delivery status is available.</Text>
+        <PairingPanel status={worker} />
         <Pressable accessibilityRole='button' onPress={checkStatus} style={styles.button}>
           <Text>Check worker</Text>
         </Pressable>
