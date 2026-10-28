@@ -36,8 +36,11 @@ facts.
   `pear-mobile`. Copying loses the package's mobile import remap, so retaining the
   desktop `pear-runtime` require would be incorrect. Its direct dependencies are
   declared at the original lockfile versions.
-- Autopass lives in `workers/notebook.js` with a Corestore at
-  `path.join(pear.storage, 'relay', 'notebook')`, separate from the updater store.
+- `workers/library.js` selects one active store using `relay/active.json`. It adopts
+  the Phase 2 `relay/notebook` directory in place, creates fresh `notebooks/<id>`
+  stores, and uses a fresh `joins/<id>` directory for every attempt. Existing active
+  stores cannot be replaced by Create/Join. Autopass remains in `workers/notebook.js`,
+  separate from the updater store. See `docs/PHASE3.md` for activation/cancellation.
   Startup awaits `pass.ready()`. Requests are validated in `shared/protocol.js` and
   dispatched by `workers/requests.js`; mutations and list snapshots are serialized.
   `get()` returns `{ value, file }` or null; `list()` is consumed with `for await`.

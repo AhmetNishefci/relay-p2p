@@ -36,6 +36,23 @@ the restriction on fully AI-coded submissions by themselves.
 The verification notes distinguish executed Node tests and Android results from
 future peer tests. No pairing or acknowledgment behavior is implemented in Phase 2.
 
+## Phase 3: pairing and trust
+
+The candidate explicitly authorized pairing implementation and independent-peer
+verification. Codex generated the library/manifest lifecycle, invite validation,
+protocol extensions, worker permission/participant operations, pairing UI, and
+focused tests. It also configured two fresh AVDs, investigated the upstream pairing
+branch without patching dependencies, and generated local test drivers. Debug
+Android actions used the existing RN client through the inspector and actual Bare
+IPC; release actions used the native UI. No entries were imported directly into
+Android storage to simulate replication. Actual results are in PHASE3.md.
+
+This is AI-generated code. No candidate-authored edits or completed independent
+review are claimed. Candidate review/meaningful modification of manifest activation,
+cancellation races, invitation trust, and actual permission enforcement remain
+outstanding. Pairing verification does not establish compliance with the prohibition
+on fully AI-coded submissions; candidate-led product work is still required.
+
 ## Authentic records
 
 Original Codex session identifier: `01a18158-3cb1-7e70-a804-2b4d3c33e634`.

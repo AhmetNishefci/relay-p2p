@@ -1,7 +1,8 @@
 > **Assessment baseline:** imported from upstream commit `4ad3f8df5b5f20ce7621c42457795d53b2248c9b`.
 > See [Android baseline setup and evidence](docs/PHASE1.md) and [AI assistance disclosure](docs/AI_USAGE.md).
 > [Phase 2](docs/PHASE2.md) adds the persistent Autopass/IPC foundation and a minimal verification UI.
-> Pairing, acknowledgment handoffs, and final Relay design are not implemented yet.
+> [Phase 3](docs/PHASE3.md) adds Contributor/Viewer pairing and verified independent-peer replication.
+> Acknowledgment handoffs and final Relay design are not implemented yet.
 
 # hello-pear-react-native <a name="hello-pear-react-native"></a>
 
@@ -208,7 +209,7 @@ The worklet keeps `pear-runtime/corestore`, `pear-runtime/next/<length>.<fork>/`
 Upstream ships its worker in [hello-pear-worker][hello-pear-worker]. This assessment
 copies its installed 1.1.0 body into `workers/main.js`, switches its runtime require
 to `pear-mobile`, and adds the isolated Autopass service. The snippet below describes
-the original template entry; see [Phase 2](docs/PHASE2.md) for the current worker:
+the original template entry; see [Phase 3](docs/PHASE3.md) for the current worker:
 
 ```js
 require('hello-pear-worker')
@@ -484,3 +485,19 @@ Apache-2.0
 [pear-release-troubleshooting]: https://docs.pears.com/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases/
 [pear-seeded-after-open]: https://docs.pears.com/how-to/operate-an-app/manual-deployment/troubleshoot-desktop-releases/#seeder-came-online-after-the-client
 [electron-ci]: https://github.com/holepunchto/hello-pear-electron#ci-configuration
+
+## DECISIONS
+
+1. **Sync state.** Completed local writes say “Saved on this device.” An update event
+   does not establish remote delivery. We chose this over a generic “synced” badge
+   because Autopass exposes no per-entry delivery acknowledgment. This sacrifices a
+   simple global status. Explicit application acknowledgments are the next milestone,
+   not an implemented feature yet. A reliable delivery API or evidence that users
+   need a different distinction would change this decision.
+2. **Pairing and trust.** Invite possession grants access; the inviter selects
+   Contributor or Viewer, and the joined peer displays its actual capability.
+   Names are unverified and there are no owner/admin claims. We chose capability
+   sharing over silent admission or an account/identity system, sacrificing verified
+   human identity and fine-grained sharing. New identity requirements or invitation
+   abuse would change the choice. Options, tests, limitations, and implementation
+   details are documented in [Phase 3](docs/PHASE3.md#pairing-and-trust-decision).
