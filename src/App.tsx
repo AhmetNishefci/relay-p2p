@@ -5,16 +5,21 @@ import { reloadAppAsync } from 'expo-modules-core'
 import { StatusBar } from 'expo-status-bar'
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { version } from '../package.json'
-import type { Entry, WorkerStatus } from '../shared/protocol'
+import type { Entry, Acknowledgment, WorkerStatus } from '../shared/protocol'
 import { getWorkerSession } from './worker/runtime'
 import { createListRefresher } from './worker/client'
 import { PairingPanel } from './PairingPanel'
+import { Acknowledgments } from './Acknowledgments'
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : 'Operation failed.')
 
 export default function App() {
   const [worker, setWorker] = useState<WorkerStatus>({ state: 'starting', writable: false })
   const [entries, setEntries] = useState<Entry[]>([])
+  const [acknowledgments, setAcknowledgments] = useState<Acknowledgment[]>([])
+  const [localWriterKey, setLocalWriterKey] = useState('')
+  const [pendingAcknowledgment, setPendingAcknowledgment] = useState<string | null>(null)
+  const [skippedAcknowledgments, setSkippedAcknowledgments] = useState(0)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [error, setError] = useState('')
@@ -38,6 +43,9 @@ export default function App() {
         (result) => {
           setEntries(result.entries)
           setSkipped(result.skipped)
+          setAcknowledgments(result.acknowledgments)
+          setLocalWriterKey(result.localWriterKey)
+          setSkippedAcknowledgments(result.skippedAcknowledgments)
         },
         (err) => setError(messageOf(err))
       )
@@ -51,6 +59,9 @@ export default function App() {
         else {
           setEntries([])
           setSkipped(0)
+          setAcknowledgments([])
+          setLocalWriterKey('')
+          setSkippedAcknowledgments(0)
         }
       }
       const unsubscribe = client.subscribe((event) => {
@@ -161,6 +172,37 @@ export default function App() {
     }
   }
 
+  async function acknowledgeEntry(entryId: string) {
+    if (busy) return
+    setBusy(true)
+    setPendingAcknowledgment(entryId)
+    setError('')
+    setFeedback('')
+    try {
+      const result = await getWorkerSession().client.request('entries.acknowledge', { entryId })
+      const acknowledgment = result.acknowledgment
+      setAcknowledgments((current) => [
+        ...current.filter(
+          (record) =>
+            record.entryId !== acknowledgment.entryId ||
+            record.writerKey !== acknowledgment.writerKey
+        ),
+        acknowledgment
+      ])
+      setFeedback(
+        result.alreadyRecorded
+          ? 'Acknowledgment already recorded for this device.'
+          : 'Acknowledgment recorded on this device.'
+      )
+      await refreshRef.current?.()
+    } catch (err) {
+      setError(messageOf(err))
+    } finally {
+      setPendingAcknowledgment(null)
+      setBusy(false)
+    }
+  }
+
   const pearLabel =
     pearStatus === 'incompatible'
       ? `Update available on the ${Platform.OS === 'ios' ? 'App Store' : 'Play Store'}`
@@ -180,6 +222,7 @@ export default function App() {
           Updates: {updates} · Entries: {entries.length}
         </Text>
         <Text>No remote delivery status is available.</Text>
+        <Text>Acknowledgments are unverified device-key records, not proof of reading.</Text>
         <PairingPanel status={worker} />
         <Pressable accessibilityRole='button' onPress={checkStatus} style={styles.button}>
           <Text>Check worker</Text>
@@ -236,12 +279,27 @@ export default function App() {
         {skipped > 0 && (
           <Text style={styles.error}>{skipped} unsupported or malformed entries were skipped.</Text>
         )}
+        {skippedAcknowledgments > 0 && (
+          <Text style={styles.error}>
+            {skippedAcknowledgments} unsupported or malformed acknowledgment records were skipped.
+          </Text>
+        )}
         {entries.length === 0 && <Text>No entries.</Text>}
         {entries.map((entry) => (
-          <View key={entry.id} style={styles.entry}>
+          <View key={entry.id} style={styles.entry} testID={`entry-${entry.id}`}>
             <Text style={styles.entryTitle}>{entry.title}</Text>
             <Text>{entry.body}</Text>
             <Text selectable>{entry.id}</Text>
+            <Acknowledgments
+              entryId={entry.id}
+              title={entry.title}
+              records={acknowledgments.filter((record) => record.entryId === entry.id)}
+              localWriterKey={localWriterKey}
+              writable={worker.writable}
+              busy={busy}
+              pending={pendingAcknowledgment === entry.id}
+              onAcknowledge={() => acknowledgeEntry(entry.id)}
+            />
             <Pressable
               accessibilityRole='button'
               accessibilityLabel={`Remove ${entry.title}`}
