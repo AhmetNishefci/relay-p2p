@@ -38,6 +38,7 @@ export default function App() {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [refreshing, setRefreshing] = useState(false)
+  const [checking, setChecking] = useState(false)
   const ready = worker.state === 'ready'
   const selected = entries.find((entry) => entry.id === selectedId)
   const dirty = title.length > 0 || body.length > 0
@@ -92,6 +93,18 @@ export default function App() {
       setScreen('detail')
     }
   }
+  async function reviewNotebook() {
+    if (checking) return
+    setChecking(true)
+    try {
+      if (await notebook.checkStatus()) {
+        Keyboard.dismiss()
+        setScreen('home')
+      }
+    } finally {
+      setChecking(false)
+    }
+  }
   function remove(entry: Entry) {
     Alert.alert(
       'Remove this entry?',
@@ -122,12 +135,8 @@ export default function App() {
           <Button
             label='Check again'
             variant='quiet'
-            onPress={async () => {
-              if (await notebook.checkStatus()) {
-                Keyboard.dismiss()
-                setScreen('home')
-              }
-            }}
+            onPress={reviewNotebook}
+            pending={checking}
             disabled={busy}
           />
         </View>
@@ -285,14 +294,16 @@ export default function App() {
         </ScrollView>
         <View style={ui.footer}>
           <Button
-            label={busy ? 'Saving…' : 'Save entry'}
-            pending={busy}
-            disabled={!title.trim() || !worker.writable || notebook.mutationUnknown}
-            onPress={save}
-            testID='add-entry'
+            label={notebook.mutationUnknown ? 'Review notebook' : busy ? 'Saving…' : 'Save entry'}
+            pending={busy || checking}
+            disabled={!notebook.mutationUnknown && (!title.trim() || !worker.writable)}
+            onPress={notebook.mutationUnknown ? reviewNotebook : save}
+            testID={notebook.mutationUnknown ? 'review-notebook' : 'add-entry'}
           />
           <Text style={[ui.caption, { textAlign: 'center' }]}>
-            Saves on this device. Acknowledgment is a separate action.
+            {notebook.mutationUnknown
+              ? 'The save outcome is unknown. Your draft is kept while you review.'
+              : 'Saves on this device. Acknowledgment is a separate action.'}
           </Text>
         </View>
       </>
