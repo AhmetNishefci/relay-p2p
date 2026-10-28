@@ -63,8 +63,8 @@ repository. Internal approval-review sessions are not candidate conversations.
 
 Internal instructions/reasoning and image data are excluded. Possible capability
 strings, credentials and unrelated machine/home identifiers receive declared masks;
-message text is not summarized. This editorial review leaves the captured transcript
-unchanged, including historical wording in genuine messages.
+message text is not summarized. Transcript refreshes preserve all previously exported
+records, including historical wording in genuine messages.
 
 ## Verification and limitations
 
@@ -75,9 +75,9 @@ The assessment requires AI records and excludes fully AI-coded submissions. The
 recorded development approach above does not establish eligibility under that policy;
 this disclosure does not claim that the restriction has been satisfied.
 
-The export covers the known session through its manifest cutoff. Later messages,
-including this documentation review, remain in the ongoing original until the export
-is refreshed. After the final response, run the documented exporter, inspect privacy
-replacements and verify hashes before publication. Any additional AI tools or sessions
+The publication export includes the documentation review and publication authorization
+through its manifest cutoff. Later publication steps and the final report remain in
+the ongoing original until a subsequent refresh. Each refresh requires review of
+privacy replacements and verification of hashes. Any additional AI tools or sessions
 require candidate confirmation and inclusion; repository evidence alone cannot establish
 that no other assistance occurred.
