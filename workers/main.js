@@ -7,8 +7,8 @@ const path = require('bare-path')
 const dir = require('bare-storage')
 const { isBareKit } = require('which-runtime')
 const { Library } = require('./library')
-const { handleRequest } = require('./requests')
-const { publicError } = require('../shared/protocol')
+const { handleRequest, encodeResponse } = require('./requests')
+const { publicError, serializeMessage } = require('../shared/protocol')
 
 // mobile doesn't have the executable path (argv[0])
 // and the worker entry path (argv[1]) in the workers argv‘s
@@ -45,7 +45,7 @@ pear.updater.on('updated', () => pipe.write('updated'))
 pear.on('minver-required', () => pipe.write('minver-required')) // for mobile store update notification
 
 const send = (message) => {
-  if (!pipe.destroying) pipe.write(JSON.stringify(message))
+  if (!pipe.destroying) pipe.write(serializeMessage(message))
 }
 const notebook = new Library(path.join(pear.storage, 'relay'), {
   onChanged: () => send({ v: 1, type: 'event', event: 'changed', payload: null }),
@@ -111,7 +111,8 @@ pipe.on('data', async (data) => {
       pipe.write('pear:updateFailed Update failed. Restart the app before retrying.')
     }
   } else {
-    send(await handleRequest(message, notebook))
+    const response = await handleRequest(message, notebook)
+    if (!pipe.destroying) pipe.write(encodeResponse(response))
   }
 })
 

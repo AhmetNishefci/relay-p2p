@@ -79,6 +79,15 @@ facts.
   one pending waiter batch for the following read. Closing rejects waiting callers and
   suppresses callbacks from a late response. A failed reconciliation read does not undo
   a locally completed mutation.
+  JSON application messages retain the 2M UTF-16-code-unit ceiling and also have a
+  4,600,000-byte UTF-8 ceiling. The latter preserves the 1.5M-character normalized
+  snapshot allowance at worst-case UTF-8 width plus envelope overhead. It is not a
+  new lower notebook quota. Both senders validate before IPC; receivers validate before
+  JSON parsing. FramedStream/native buffers already exist by receive time, so this
+  does not claim protection against a compromised raw IPC writer's frame allocation.
+  Foreign stored values use the same parse budget and are counted as skipped without
+  deleting data. Unencodable responses become correlated `RESPONSE_UNAVAILABLE`
+  failures: the operation may already have completed and must not be replayed.
   An Autopass `update` is a local-view change, never a remote delivery acknowledgment.
   See `docs/PHASE2.md` for schemas, limits, and actual runtime evidence.
 - `console.log` inside the worklet does not reach the Metro console — BareKit writes it

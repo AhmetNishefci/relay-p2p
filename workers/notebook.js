@@ -3,6 +3,7 @@ const Autopass = require('autopass')
 const crypto = require('hypercore-crypto')
 const {
   Fault,
+  parseJSON,
   MAX_ENTRIES,
   MAX_ACKNOWLEDGMENTS,
   isEntry,
@@ -102,7 +103,7 @@ class Notebook {
         if (record.key.startsWith('ack:')) {
           let acknowledgment
           try {
-            acknowledgment = JSON.parse(record.value)
+            acknowledgment = parseJSON(record.value)
           } catch {
             skippedAcknowledgments++
             continue
@@ -130,7 +131,7 @@ class Notebook {
         if (!record.key.startsWith('entry:')) continue
         let entry
         try {
-          entry = JSON.parse(record.value)
+          entry = parseJSON(record.value)
         } catch {
           skipped++
           continue
@@ -174,7 +175,7 @@ class Notebook {
       const record = await this.pass.get('entry:' + payload.entryId)
       let entry
       try {
-        entry = record && JSON.parse(record.value)
+        entry = record && parseJSON(record.value)
       } catch {
         entry = null
       }
@@ -190,7 +191,7 @@ class Notebook {
       if (existing) {
         let acknowledgment
         try {
-          acknowledgment = JSON.parse(existing.value)
+          acknowledgment = parseJSON(existing.value)
         } catch {
           acknowledgment = null
         }

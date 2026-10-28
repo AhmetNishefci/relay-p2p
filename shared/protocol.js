@@ -1,5 +1,10 @@
+const b4a = require('b4a')
+
 const VERSION = 1
 const MAX_MESSAGE_LENGTH = 2_000_000
+// Preserve the existing 1.5M-character snapshot budget, including worst-case
+// three-byte UTF-8 code units, with room for the response envelope/array separators.
+const MAX_MESSAGE_BYTES = 4_600_000
 const MAX_ENTRIES = 200
 const MAX_ACKNOWLEDGMENTS = 1000
 const ID = /^[a-f0-9]{32}$/
@@ -19,10 +24,30 @@ const fields = (value, names) =>
   object(value) && Object.keys(value).every((key) => names.includes(key))
 const text = (value, max) => typeof value === 'string' && value.length <= max
 
-function parseJSON(raw) {
+function validateSerialized(raw) {
   if (typeof raw !== 'string' || raw.length > MAX_MESSAGE_LENGTH) {
     throw new Fault('INVALID_MESSAGE', 'Message is too large or is not text.')
   }
+  // Every UTF-16 code unit needs at most three UTF-8 bytes. Normal-sized frames
+  // can skip a second linear scan; near the ceiling we measure the actual bytes.
+  if (raw.length * 3 > MAX_MESSAGE_BYTES && b4a.byteLength(raw) > MAX_MESSAGE_BYTES) {
+    throw new Fault('INVALID_MESSAGE', 'Message exceeds the serialized byte budget.')
+  }
+}
+
+function serializeMessage(value) {
+  let raw
+  try {
+    raw = JSON.stringify(value)
+  } catch {
+    throw new Fault('INVALID_MESSAGE', 'Message must be serializable JSON.')
+  }
+  validateSerialized(raw)
+  return raw
+}
+
+function parseJSON(raw) {
+  validateSerialized(raw)
   try {
     return JSON.parse(raw)
   } catch {
@@ -208,10 +233,13 @@ function publicError(error) {
 
 module.exports = {
   VERSION,
+  MAX_MESSAGE_LENGTH,
+  MAX_MESSAGE_BYTES,
   MAX_ENTRIES,
   MAX_ACKNOWLEDGMENTS,
   Fault,
   parseJSON,
+  serializeMessage,
   validateRequest,
   requestId,
   isEntry,

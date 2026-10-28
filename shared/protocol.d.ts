@@ -63,6 +63,8 @@ export type Response =
   | { v: 1; type: 'response'; id: string; ok: true; result: unknown }
   | { v: 1; type: 'response'; id: string | null; ok: false; error: PublicError }
 export const VERSION: 1
+export const MAX_MESSAGE_LENGTH: number
+export const MAX_MESSAGE_BYTES: number
 export const MAX_ENTRIES: number
 export const MAX_ACKNOWLEDGMENTS: number
 export class Fault extends Error {
@@ -70,6 +72,7 @@ export class Fault extends Error {
   constructor(code: string, message: string)
 }
 export function parseJSON(raw: string): unknown
+export function serializeMessage(value: unknown): string
 export function validateRequest(value: unknown): Request
 export function requestId(value: unknown): value is string
 export function isEntry(value: unknown): value is Entry

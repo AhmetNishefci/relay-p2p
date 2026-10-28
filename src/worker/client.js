@@ -2,6 +2,7 @@ const {
   VERSION,
   Fault,
   parseJSON,
+  serializeMessage,
   validateServerMessage,
   isResult
 } = require('../../shared/protocol')
@@ -31,6 +32,12 @@ class WorkerClient {
       return Promise.reject(new Fault('DISCONNECTED', 'Worker disconnected. Restart the app.'))
     }
     const id = String(++this.nextId)
+    let raw
+    try {
+      raw = serializeMessage({ v: VERSION, type: 'request', id, op, payload })
+    } catch (error) {
+      return Promise.reject(error) // Preflight: nothing was sent or queued.
+    }
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id)
@@ -38,7 +45,7 @@ class WorkerClient {
       }, timeoutMs)
       this.pending.set(id, { op, resolve, reject, timer })
       try {
-        this.write(JSON.stringify({ v: VERSION, type: 'request', id, op, payload }))
+        this.write(raw)
       } catch {
         clearTimeout(timer)
         this.pending.delete(id)
