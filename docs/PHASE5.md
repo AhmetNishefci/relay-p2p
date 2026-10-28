@@ -94,6 +94,7 @@ and package/runtime identity remain from the pinned template.
 | Native invitation transfer | Viewer invite generation, native Copy text action, cancellation and Viewer sharing restrictions passed on final release; `final-sharing.json`                                                                   |
 | Fresh standalone           | Clean welcome, invalid invitation, real joining/cancel, Create and empty notebook passed; `fresh-release.json`, original/resumed logs                                                                           |
 | Draft/rapid taps           | Keep/discard preserves or discards only the unsaved draft; rapid Save taps produce one entry; actual launcher background and resumed replication observed; first two passed steps in `release-interactions.log` |
+| Fresh release Viewer join  | Fresh Viewer joins via final native Share/UI, receives the entry and acknowledgment through replication, and retains access after cancel/restart; `final-release-join.json`                                     |
 
 Commands executed with Node 22.23.3:
 
