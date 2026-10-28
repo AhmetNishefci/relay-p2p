@@ -47,5 +47,12 @@ class TranscriptExportTest(unittest.TestCase):
         self.assertEqual(result, 'root/[WATCHMAN COOKIE REDACTED] styles.localStatus')
         self.assertEqual(counts['watchman_machine_identifiers'], 1)
 
+    def test_masks_unrelated_project_names_but_preserves_assessment_paths(self):
+        counts = collections.Counter()
+        text = '/Users/private/Developer/private-project/src /Users/private/Developer/tether-wallet-assessment/src'
+        result = ai.redact(text, counts)
+        self.assertEqual(result, '<HOME>/Developer/<OTHER_PROJECT>/src <HOME>/Developer/tether-wallet-assessment/src')
+        self.assertEqual(counts['unrelated_project_roots'], 1)
+
 if __name__ == '__main__':
     unittest.main()

@@ -8,7 +8,7 @@ Message/tool text is preserved literally except for declared replacements.
 The export contains user/assistant messages and tool calls/results. It excludes
 internal instructions/reasoning and duplicate internal session events. Image data
 is withheld to avoid publishing private screenshots. Possible capability strings,
-credential patterns, long encoded machine data, private keys, home paths and machine
+credential patterns, long encoded machine data, private keys, home paths, unrelated project roots and machine
 identifiers are replaced with explicit markers. The manifest gives redaction counts,
 source hashes, export hashes, record count and the capture cutoff.
 

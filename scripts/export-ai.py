@@ -47,6 +47,7 @@ def redact(value, counts, image=False):
         (CAPABILITY, 'possible_invite_capabilities', '[POSSIBLE INVITE CAPABILITY REDACTED]'),
         (BASE64, 'encoded_machine_or_binary_data', '[ENCODED MACHINE/BINARY DATA REDACTED]'),
         (HOME, 'home_paths', '<HOME>'),
+        (re.compile(r'<HOME>/Developer/(?!tether-wallet-assessment(?:[/\s\"\'`\\]|$))[^/\s\"\'`\\]+'), 'unrelated_project_roots', '<HOME>/Developer/<OTHER_PROJECT>'),
         (re.compile(r'\.watchman-cookie-[^/\s\"\'`\\]+'), 'watchman_machine_identifiers', '[WATCHMAN COOKIE REDACTED]'),
         (re.compile(r'[\w.+-]+@unknown'), 'machine_identifiers', '<MACHINE_ID>'),
     ]:
@@ -80,7 +81,7 @@ def export(sources, destination):
         'export_sha256': sha(compressed), 'decompressed_sha256': sha(data),
         'exported_records': len(records), 'redaction_counts': dict(counts),
         'selection': 'Visible user/assistant messages and tool calls/results only; internal instructions/reasoning and duplicate session events excluded.',
-        'privacy': 'Image data withheld; possible long z-base32 capabilities, credential patterns, long encoded machine data, private keys, home paths and machine identifiers replaced with explicit markers. No text summarized.',
+        'privacy': 'Image data withheld; possible long z-base32 capabilities, credential patterns, long encoded machine data, private keys, home paths, unrelated project roots and machine identifiers replaced with explicit markers. No text summarized.',
         'cutoff': 'Ongoing session: records after capture are absent. Refresh after the final response before publishing.',
         'completeness': 'This known Codex session is accounted for. Other AI use requires candidate confirmation; no qualifying human code contribution is evidenced.'
     }
