@@ -71,39 +71,90 @@ test('bounds waits; disconnect rejects pending requests and blocks future writes
   broken.close()
 })
 
-test('coalesces bursts and refreshes again if updates arrive during a list', async () => {
-  const resolve = []
+test('a finite burst coalesces into one follow-up read started after the explicit request', async () => {
+  const loads = []
   const values = []
   const refresher = createListRefresher(
-    () => new Promise((done) => resolve.push(done)),
+    () => new Promise((resolve) => loads.push(resolve)),
     (value) => values.push(value),
     assert.fail
   )
+  refresher.invalidate()
   const completed = refresher.refresh()
-  const joined = refresher.refresh()
-  assert.equal(joined, completed)
+  assert.equal(refresher.refresh(), completed, 'callers targeting the same next read coalesce')
   let settled = false
-  joined.then(() => {
+  completed.then(() => {
     settled = true
   })
-  for (let i = 0; i < 20; i++) assert.equal(refresher.refresh(), completed)
-  assert.equal(resolve.length, 1)
-  resolve[0]('first snapshot')
+  for (let i = 0; i < 100; i++) refresher.invalidate()
+  assert.equal(loads.length, 1)
+  loads[0]('old snapshot')
   await tick()
-  assert.equal(settled, false, 'a coalesced caller must wait for the dirty follow-up snapshot')
-  assert.equal(resolve.length, 2)
-  resolve[1]('latest snapshot')
+  assert.equal(settled, false, 'an already-started read cannot satisfy the freshness barrier')
+  assert.equal(loads.length, 2)
+  loads[1]('fresh snapshot')
   await completed
-  assert.deepEqual(values, ['first snapshot', 'latest snapshot'])
-  assert.equal(resolve.length, 2)
-  const closing = refresher.refresh()
+  assert.deepEqual(values, ['old snapshot', 'fresh snapshot'])
+  assert.equal(loads.length, 2)
   refresher.close()
-  resolve[2]('must not render after unmount')
-  await closing
-  assert.equal(values.length, 2)
 })
 
-test('refresh failures reach the UI and permit a later retry', async () => {
+test('explicit callers finish during continuous invalidations without concurrent reads', async () => {
+  const loads = []
+  let active = 0
+  let maximumActive = 0
+  let values = 0
+  let completedAfter = null
+  const refresher = createListRefresher(
+    () => {
+      maximumActive = Math.max(maximumActive, ++active)
+      return new Promise((resolve) => loads.push(resolve)).finally(() => active--)
+    },
+    () => {
+      values++
+    },
+    assert.fail
+  )
+  refresher.invalidate()
+  const completed = refresher.refresh().then(() => {
+    completedAfter = values
+  })
+  for (let i = 0; i < 50; i++) {
+    refresher.invalidate()
+    loads.shift()(i)
+    await tick()
+    if (i >= 1) assert.equal(completedAfter, 2)
+  }
+  assert.equal(maximumActive, 1)
+  assert.equal(values, 50)
+  await completed
+  refresher.close()
+  loads.shift()(50)
+  await tick()
+  assert.equal(values, 50, 'closed consumers never receive the last in-flight result')
+})
+
+test('closing rejects waiters immediately and removes callbacks even before a read responds', async () => {
+  let resolve
+  const refresher = createListRefresher(
+    () =>
+      new Promise((done) => {
+        resolve = done
+      }),
+    () => assert.fail('closed callback'),
+    () => assert.fail('closed error callback')
+  )
+  const rejected = assert.rejects(refresher.refresh(), { code: 'DISCONNECTED' })
+  refresher.close()
+  refresher.close()
+  await rejected
+  await assert.rejects(refresher.refresh(), { code: 'DISCONNECTED' })
+  refresher.invalidate()
+  resolve('late')
+  await tick()
+})
+
+test('refresh failures reach both the explicit caller and UI and permit a later retry', async () => {
   let fail = true
   const errors = []
   const values = []
@@ -112,7 +163,7 @@ test('refresh failures reach the UI and permit a later retry', async () => {
     (value) => values.push(value),
     (error) => errors.push(error.message)
   )
-  await refresher.refresh()
+  await assert.rejects(refresher.refresh(), { message: 'list failed' })
   fail = false
   await refresher.refresh()
   assert.deepEqual(errors, ['list failed'])
@@ -127,7 +178,7 @@ test('an update queued as a read completes is not lost', async () => {
     () => Promise.resolve(++reads),
     (value) => {
       values.push(value)
-      if (value === 1) queueMicrotask(() => refresher.refresh())
+      if (value === 1) queueMicrotask(() => refresher.invalidate())
     },
     assert.fail
   )

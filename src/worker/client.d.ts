@@ -15,4 +15,4 @@ export function createListRefresher<T>(
   load: () => Promise<T>,
   onValue: (value: T) => void,
   onError: (error: unknown) => void
-): { refresh(): Promise<void>; close(): void }
+): { refresh(): Promise<void>; invalidate(): void; close(): void }

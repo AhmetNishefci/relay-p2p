@@ -73,6 +73,12 @@ facts.
   termination cannot guarantee JS cleanup; restart persistence must be tested.
 - Pear control strings remain separate from JSON application frames on the same pipe.
   The client correlates IDs, validates results, bounds waits, and coalesces list refreshes.
+  Background events use `invalidate()` without allocating waiting callers. An explicit
+  `refresh()` waits for a read started after that call; subsequent invalidations cannot
+  extend its wait until global quiet. There is still only one active read, with at most
+  one pending waiter batch for the following read. Closing rejects waiting callers and
+  suppresses callbacks from a late response. A failed reconciliation read does not undo
+  a locally completed mutation.
   An Autopass `update` is a local-view change, never a remote delivery acknowledgment.
   See `docs/PHASE2.md` for schemas, limits, and actual runtime evidence.
 - `console.log` inside the worklet does not reach the Metro console — BareKit writes it

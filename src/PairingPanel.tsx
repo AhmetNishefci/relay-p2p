@@ -45,10 +45,16 @@ export function PairingPanel({
       },
       () => setError('Participant records could not be loaded. Try again.')
     )
-    setRosterRefresh(() => refresh.refresh)
-    refresh.refresh()
+    setRosterRefresh(() => async () => {
+      try {
+        await refresh.refresh()
+      } catch {
+        setError('Participant records could not be loaded. Try again.')
+      }
+    })
+    refresh.invalidate()
     const unsubscribe = client.subscribe((event) => {
-      if (event.event === 'changed') refresh.refresh()
+      if (event.event === 'changed') refresh.invalidate()
       if (event.event === 'error') setError(event.payload.message)
     })
     return () => {

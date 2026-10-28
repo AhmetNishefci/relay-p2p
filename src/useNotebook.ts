@@ -47,7 +47,7 @@ export function useNotebook() {
         if (status.state !== 'starting') clearTimeout(startupTimer)
         setWorker(status)
         if (ready) setError('')
-        if (ready) refresher.refresh()
+        if (ready) refresher.invalidate()
         else {
           setLoaded(false)
           setEntries([])
@@ -60,7 +60,7 @@ export function useNotebook() {
       const unsubscribe = client.subscribe((event) => {
         if (event.event === 'ready') onReady(event.payload)
         else if (event.event === 'changed') {
-          if (ready) refresher.refresh()
+          if (ready) refresher.invalidate()
         } else {
           setError(event.payload.message)
           if (
@@ -118,6 +118,23 @@ export function useNotebook() {
     }
   }, [])
 
+  async function refreshAfterWrite() {
+    try {
+      await refreshRef.current?.()
+    } catch {
+      // The write already succeeded. A snapshot failure does not undo it.
+      setError('The change was recorded locally, but the view could not refresh. Check again.')
+    }
+  }
+
+  async function refresh() {
+    try {
+      await refreshRef.current?.()
+    } catch (err) {
+      setError(messageOf(err))
+    }
+  }
+
   async function addEntry(title: string, body: string) {
     if (locked.current) return null
     locked.current = true
@@ -128,7 +145,7 @@ export function useNotebook() {
       const entry = await getWorkerSession().client.request('entries.add', { title, body })
       setEntries((current) => [entry, ...current.filter((item) => item.id !== entry.id)])
       setFeedback('Saved on this device.')
-      await refreshRef.current?.()
+      await refreshAfterWrite()
       return entry
     } catch (err) {
       setError(messageOf(err))
@@ -147,7 +164,7 @@ export function useNotebook() {
     try {
       await getWorkerSession().client.request('entries.remove', { id })
       setFeedback('Entry removed from the notebook.')
-      await refreshRef.current?.()
+      await refreshAfterWrite()
       return true
     } catch (err) {
       setError(messageOf(err))
@@ -194,7 +211,7 @@ export function useNotebook() {
           ? 'Acknowledgment already recorded for this device.'
           : 'Acknowledgment recorded on this device.'
       )
-      await refreshRef.current?.()
+      await refreshAfterWrite()
     } catch (err) {
       setError(messageOf(err))
     } finally {
@@ -231,7 +248,7 @@ export function useNotebook() {
     removeEntry,
     acknowledgeEntry,
     checkStatus,
-    refresh: () => refreshRef.current?.(),
+    refresh,
     clearFeedback: () => {
       setError('')
       setFeedback('')

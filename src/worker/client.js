@@ -102,50 +102,78 @@ class WorkerClient {
   }
 }
 
-// One in-flight list, plus one dirty bit. An update during a read schedules another
-// read after completion; an older response can never replace a newer response.
+// One active snapshot. Explicit callers wait for a read STARTED after their call;
+// later invalidations may schedule more work without extending that caller's wait.
 function createListRefresher(load, onValue, onError) {
-  let pending = null
+  let running = false
   let dirty = false
   let closed = false
-  function refresh() {
-    if (closed) return Promise.resolve()
-    if (pending) {
-      dirty = true
-      return pending
-    }
-    // Publish the completion before calling load, including synchronous callbacks.
-    let resolve
-    let reject
-    pending = new Promise((done, fail) => {
-      resolve = done
-      reject = fail
-    })
-    const completion = pending
-    drain().then(resolve, reject)
-    return completion
+  let generation = 0
+  const waiters = new Map()
+
+  function start() {
+    if (closed || running || !dirty) return
+    running = true
+    dirty = false
+    const reading = ++generation
+    read(reading).catch((error) => console.error('[relay] Snapshot callback failed:', error))
   }
-  async function drain() {
+
+  async function read(reading) {
+    let failure = null
     try {
-      do {
-        dirty = false
-        try {
-          const value = await load()
-          if (!closed) onValue(value)
-        } catch (error) {
-          if (!closed) onError(error)
-        }
-      } while (dirty && !closed)
+      const value = await load()
+      if (!closed) onValue(value)
+    } catch (error) {
+      failure = error
+      if (!closed) onError(error)
     } finally {
-      // Release ownership before resolving the drain, so a just-arriving update
-      // starts a new read instead of marking an already-finished drain dirty.
-      pending = null
+      running = false
+      const waiter = waiters.get(reading)
+      if (waiter) {
+        waiters.delete(reading)
+        if (failure) waiter.reject(failure)
+        else waiter.resolve()
+      }
+      start()
     }
   }
+
+  function invalidate() {
+    if (closed) return
+    dirty = true
+    start()
+  }
+
+  function refresh() {
+    if (closed) return Promise.reject(new Fault('DISCONNECTED', 'Snapshot refresh was closed.'))
+    const target = generation + 1
+    let waiter = waiters.get(target)
+    if (!waiter) {
+      let resolve
+      let reject
+      const promise = new Promise((done, fail) => {
+        resolve = done
+        reject = fail
+      })
+      waiter = { promise, resolve, reject }
+      waiters.set(target, waiter)
+    }
+    invalidate()
+    return waiter.promise
+  }
+
   return {
     refresh,
+    invalidate,
     close() {
+      if (closed) return
       closed = true
+      dirty = false
+      for (const waiter of waiters.values()) {
+        waiter.reject(new Fault('DISCONNECTED', 'Snapshot refresh was closed.'))
+      }
+      waiters.clear()
     }
   }
 }
