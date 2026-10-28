@@ -104,6 +104,10 @@ runtime compatibility. The original vector mark and regeneration script are in
    Viewers can read entries/acknowledgments but cannot modify them or invite peers.
 5. Updates refresh automatically; pull-to-refresh requests another local snapshot.
    Removing an entry requires confirmation and does not promise remote erasure.
+6. Open **Notebook activity** for current entry and acknowledgment records. Filter
+   **Acknowledgments** or **No acknowledgment**, then tap a row to open its entry.
+   Back returns to the same filter. Device-recorded times are not delivery/read
+   events; removed entries disappear. This is a current view, not permanent history.
 
 Use independent emulator AVDs or devices with separate application data for a peer
 demo. Secondary Android user profiles failed in the pinned Bare runtime and are not
@@ -123,7 +127,8 @@ Tests include real isolated Corestores and local DHT peers. Native Android tests
 are separate: create/join, bidirectional writes/removal, Viewer rejection, replicated
 acknowledgment, airplane-mode reconnect, persistence and background/resume. See
 [engineering audit](docs/AUDIT.md), [product QA](docs/PHASE5.md), and
-[Phase 7 measurements and reliability tests](docs/PHASE7.md).
+[Phase 7 measurements and reliability tests](docs/PHASE7.md), and
+[Notebook Activity behavior and QA](docs/PHASE8.md).
 GitHub CI configuration is not evidence of a GitHub run before the repository exists.
 
 ## DECISIONS

@@ -1,28 +1,28 @@
 {
   "description": "Genuine visible records, filtered and privacy-redacted; not an unmodified original.",
-  "captured_at_utc": "2026-10-28T15:38:46.388625+00:00",
+  "captured_at_utc": "2026-10-28T16:45:54.109972+00:00",
   "sources": {
     "rollout-2026-10-28T08-10-06-01a18158-3cb1-7e70-a804-2b4d3c33e634.jsonl": {
-      "sha256": "30071c277d983a4478555521a84c34f84dcf2d8c4c696ed78d96f450b9dfcdf0",
-      "bytes": 46119512,
-      "last_timestamp": "2026-10-28T15:38:45.581Z",
-      "visible_records": 1472
+      "sha256": "2aa4551dfaf60b2873d51c1fc8cc2f1b409505cd43a88291333723061aa72af5",
+      "bytes": 53641171,
+      "last_timestamp": "2026-10-28T16:45:53.208Z",
+      "visible_records": 1653
     }
   },
   "export_file": "codex-visible.jsonl.gz",
-  "export_sha256": "1fc123c98492ec75a5a24d660e7e6252a63fda3abb65c5dadf01b1dacd7630ca",
-  "decompressed_sha256": "9e0ba02eea936f3ec29a6c184574b5b7f7177d26247fd55f27d4844eff0a6f20",
-  "exported_records": 1472,
+  "export_sha256": "414b430d387d02e2ecd993ad427c7588cbd87132716a2e5927c465bfd4af1894",
+  "decompressed_sha256": "acf1bf024e819e16b221b28d3cebf7c8583454233f0c978101ca0baf18245da3",
+  "exported_records": 1653,
   "redaction_counts": {
     "private_keys": 0,
     "credentials": 0,
     "possible_invite_capabilities": 0,
     "encoded_machine_or_binary_data": 2,
-    "home_paths": 518,
+    "home_paths": 544,
     "unrelated_project_roots": 17,
-    "watchman_machine_identifiers": 7,
+    "watchman_machine_identifiers": 8,
     "machine_identifiers": 6,
-    "image_fields": 57
+    "image_fields": 66
   },
   "selection": "Visible user/assistant messages and tool calls/results only; internal instructions/reasoning and duplicate session events excluded.",
   "privacy": "Image data withheld; possible long z-base32 capabilities, credential patterns, long encoded machine data, private keys, home paths, unrelated project roots and machine identifiers replaced with explicit markers. No text summarized.",
