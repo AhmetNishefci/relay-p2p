@@ -1,116 +1,51 @@
-# AI assistance disclosure
+# AI usage and authorship disclosure
 
-## Phase 1: environment setup and official template initialization
+**The implementation, tests, artwork and assessment documentation are AI-generated.**
+No candidate-authored implementation, completed independent human review, or
+qualifying candidate contribution is evidenced in the recorded development history.
+The candidate selected/approved Relay and its principal decisions and authorized
+successive implementation phases; that is not the same as authoring the code.
 
-The candidate authorized Codex to inspect the environment, import the official
-Holepunch template at commit `4ad3f8df5b5f20ce7621c42457795d53b2248c9b`,
-install its locked dependencies, configure its Pear development upgrade link,
-build and verify Android, document evidence, and create one setup commit.
+The assessment explicitly excludes fully AI-coded submissions. Disclosure and
+working tests do **not** resolve this restriction. Authorship compliance remains
+unresolved, and the project must not be represented as ready for submission on
+that basis. Git author identity alone is not evidence of manual implementation.
 
-Codex performed those setup actions and authored these assessment setup notes.
-The React Native UI and Bare worker are upstream template code, not candidate-authored
-code. No Autopass or Relay feature implementation is included in Phase 1.
-The candidate selected Relay, acknowledgment handoffs, and the principal decisions
-of sync state and pairing/trust after reviewing AI research recommendations.
-No claim of manual authorship is made for AI-generated documentation or changes.
+## Scope of assistance
 
-## Phase 2: Autopass and IPC foundation
+| Phase       | Recorded AI contribution                                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1           | Inspect environment, import official template `4ad3f8d`, configure upgrade identifier, build/test Android baseline                                |
+| 2           | Generate persistent Autopass service, validated IPC/client/runtime, verification UI and tests                                                     |
+| 3           | Generate pairing/storage lifecycle, Contributor/Viewer permissions, UI and real-peer verification drivers                                         |
+| 4           | Generate acknowledgment schema/operations/UI/tests and investigate mutable shared-key trust limits                                                |
+| 5           | Generate product screens, controller/presentation components, visual QA and interaction tests                                                     |
+| Final audit | Inspect actual assessment/source, reproduce/fix races, generate original branding, audit reproducibility/security, and prepare transcript exports |
 
-The candidate authorized the scoped foundation after reviewing Phase 1. Codex
-proposed the module boundaries, inspected the installed/source APIs, and generated
-`workers/notebook.js`, `workers/requests.js`, the shared protocol/record validators
-and declarations, RN client/runtime, the verification UI changes, and focused tests.
-`workers/main.js` is based on copied upstream code with Codex-generated integration.
-Codex also generated documentation changes and the local Android verification
-harness, ran checks/builds, and exercised actual Android CRUD/restart flows.
+Existing upstream code remains credited to Holepunch. The worker began as the
+required copy of `hello-pear-worker`, with generated application integration.
+Executed tests and failures are distinguished in the phase/audit reports; no failed
+attempt is represented as a successful run. No candidate-authored changes are
+invented or retroactively attributed.
 
-These are AI-generated implementation changes, not candidate-authored code.
-Candidate review and meaningful modification of core implementation remain pending;
-no completed human review or edits are claimed. In particular the candidate should
-review request validation and error mapping, timeout reconciliation, singleton
-runtime ownership, record limits, and refresh coalescing, then make and explain
-substantive changes where appropriate. Candidate-led pairing/product development
-remains necessary; these setup/foundation phases do not establish compliance with
-the restriction on fully AI-coded submissions by themselves.
+## Authentic records and reviewer access
 
-The verification notes distinguish executed Node tests and Android results from
-future peer tests. No pairing or acknowledgment behavior is implemented in Phase 2.
+- Known Codex session: `01a18158-3cb1-7e70-a804-2b4d3c33e634`.
+- Original session filename:
+  `rollout-2026-10-28T08-10-06-01a18158-3cb1-7e70-a804-2b4d3c33e634.jsonl`.
+- The unmodified original lives in the candidate's private Codex session store.
+  Unchanged byte snapshots/hashes are retained under ignored `.assessment-local/ai/`.
+- Reviewers receive the [actual visible transcript export](ai/README.md), including
+  code suggestions/tool calls/results, via the committed compressed JSONL and its
+  integrity/redaction manifest. It is explicitly filtered/redacted, not called an
+  unmodified original or a summary pretending to be an original.
+- Internal instructions/reasoning and image data are not published. Possible access
+  capabilities, credentials and unrelated machine/home identifiers are masked.
+  No text is summarized. Private originals remain available for source-hash comparison.
 
-## Phase 3: pairing and trust
-
-The candidate explicitly authorized pairing implementation and independent-peer
-verification. Codex generated the library/manifest lifecycle, invite validation,
-protocol extensions, worker permission/participant operations, pairing UI, and
-focused tests. It also configured two fresh AVDs, investigated the upstream pairing
-branch without patching dependencies, and generated local test drivers. Debug
-Android actions used the existing RN client through the inspector and actual Bare
-IPC; release actions used the native UI. No entries were imported directly into
-Android storage to simulate replication. Actual results are in PHASE3.md.
-
-This is AI-generated code. No candidate-authored edits or completed independent
-review are claimed. Candidate review/meaningful modification of manifest activation,
-cancellation races, invitation trust, and actual permission enforcement remain
-outstanding. Pairing verification does not establish compliance with the prohibition
-on fully AI-coded submissions; candidate-led product work is still required.
-
-## Phase 4: acknowledgment handoffs
-
-The candidate authorized the handoff milestone. Codex proposed/generated the separate
-acknowledgment schema, worker-derived identity/idempotence/existence checks, snapshot
-extension, minimal acknowledgment UI, focused tests, and documentation. It inspected
-Autopass's shared-key write behavior and verified a controlled cross-writer overwrite
-in isolated test stores. This is AI-generated implementation, not candidate-authored
-code. No candidate review or substantive edits are claimed.
-
-Android debug checks use the existing RN client and Bare IPC. Release UI checks use
-actual controls; failed local UI-selector/startup attempts are preserved and are not
-reported as passed tests. Candidate review/modification of acknowledgment meaning,
-trust, idempotence, retention, and state language remain required before submission.
-
-## Phase 5: product interface and verification
-
-The candidate authorized product polish. Codex generated the screen presentation,
-shared visual components, controller extraction, invitation/participant presentation,
-confirmation and keyboard behavior, and documentation. It generated local Android
-UI drivers, inspected actual screenshots, and performed the checks recorded in
-PHASE5.md. Native dependencies and worker/protocol schemas were preserved.
-
-This implementation is AI-generated. No candidate-authored code, completed human
-review, or meaningful candidate modification is claimed. Failed environment/test
-attempts remain in the authentic logs; summaries do not replace those records.
-
-## Authentic records
-
-Original Codex session identifier: `01a18158-3cb1-7e70-a804-2b4d3c33e634`.
-The original JSONL is stored locally at:
-
-```text
-~/.codex/sessions/2026/10/28/rollout-2026-10-28T08-10-06-01a18158-3cb1-7e70-a804-2b4d3c33e634.jsonl
-```
-
-An unchanged byte snapshot is preserved under the gitignored directory
-`.assessment-local/ai/`, with its cutoff and SHA-256 in `manifest.json`.
-A literal visible-message/tool export is also preserved as
-`.assessment-local/ai/visible-session.jsonl`; its hash and exact filtering are
-recorded in the manifest. It excludes internal instructions/reasoning and duplicate
-session events; message text and tool results are not summarized or redacted.
-
-That snapshot contains the original research conversation and completed phase records
-through the stated cutoff. The session continues after each snapshot; no snapshot
-is represented as a complete transcript of messages that have not happened yet.
-Refresh from the original session after the final response, before submission.
-The local helper `python3 .assessment-local/preserve-ai.py` repeats the capture.
-
-The raw local record is not committed because it can contain environment metadata,
-internal session records, and private information. Before submission, preserve the
-original securely and export the actual visible user/assistant messages and tool
-calls/results. Any filtered or redacted export must identify its filtering and
-redactions; it must not be called an unmodified original. This document and the
-baseline report are summaries, not substitutes for transcripts.
-
-Do not include the separate approval-review session as though it were candidate
-conversation. Preserve future assessment sessions as well. Include actual code
-suggestions, candidate edits/review, debugging assistance, and executed test results.
-The candidate must lead subsequent product implementation and independently
-understand and modify all submitted code; disclosure does not make a fully AI-coded
-submission acceptable.
+The manifest records the exact cutoff. This session is ongoing: messages after
+capture, including a later final response, are absent until the export is refreshed.
+Use the checked-in exporter after the last response and review privacy before pushing.
+Other AI tools/sessions cannot be ruled out from this repository; candidate
+confirmation of any additional assistance remains required. Approval-review/internal
+sessions are not passed off as candidate conversations.

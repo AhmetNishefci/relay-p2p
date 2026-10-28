@@ -1,0 +1,29 @@
+{
+  "description": "Genuine visible records, filtered and privacy-redacted; not an unmodified original.",
+  "captured_at_utc": "2026-10-28T11:47:57.039436+00:00",
+  "sources": {
+    "rollout-2026-10-28T08-10-06-01a18158-3cb1-7e70-a804-2b4d3c33e634.jsonl": {
+      "sha256": "848a2bdf1e280bb084628fc383d56e6e3d053f1c553ba2626f66fa6888e70eaf",
+      "bytes": 30182808,
+      "last_timestamp": "2026-10-28T11:47:56.720Z",
+      "visible_records": 899
+    }
+  },
+  "export_file": "codex-visible.jsonl.gz",
+  "export_sha256": "073b589ca1b2af3f164a66b43932e2bddd408fe9537d116cd810b98329d8a43b",
+  "decompressed_sha256": "38b410f610a00987ce1e4e2373b0cc56bc41167d752750f00ddb78dea489c9d4",
+  "exported_records": 899,
+  "redaction_counts": {
+    "private_keys": 0,
+    "credentials": 0,
+    "possible_invite_capabilities": 0,
+    "encoded_machine_or_binary_data": 2,
+    "home_paths": 366,
+    "machine_identifiers": 3,
+    "image_fields": 37
+  },
+  "selection": "Visible user/assistant messages and tool calls/results only; internal instructions/reasoning and duplicate session events excluded.",
+  "privacy": "Image data withheld; possible long z-base32 capabilities, credential patterns, long encoded machine data, private keys, home paths and machine identifiers replaced with explicit markers. No text summarized.",
+  "cutoff": "Ongoing session: records after capture are absent. Refresh after the final response before publishing.",
+  "completeness": "This known Codex session is accounted for. Other AI use requires candidate confirmation; no qualifying human code contribution is evidenced."
+}
