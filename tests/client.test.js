@@ -1,6 +1,10 @@
 const test = require('node:test')
 const assert = require('node:assert/strict')
-const { WorkerClient, createListRefresher } = require('../src/worker/client')
+const {
+  WorkerClient,
+  createListRefresher,
+  isUnknownMutationError
+} = require('../src/worker/client')
 
 const status = { state: 'ready', writable: true }
 const response = (id, result = status) =>
@@ -186,4 +190,59 @@ test('an update queued as a read completes is not lost', async () => {
   await tick()
   assert.deepEqual(values, [1, 2])
   refresher.close()
+})
+
+test('only known pre-mutation denials establish that a change was rejected', () => {
+  for (const code of ['READ_ONLY', 'INVALID_PAYLOAD', 'NOT_READY', 'BUSY', 'ENTRY_NOT_FOUND']) {
+    assert.equal(isUnknownMutationError({ code }), false)
+  }
+  for (const code of [
+    'TIMEOUT',
+    'DISCONNECTED',
+    'INVALID_RESPONSE',
+    'STORAGE_ERROR',
+    'RESPONSE_TOO_LARGE'
+  ]) {
+    assert.equal(isUnknownMutationError({ code }), true)
+  }
+  assert.equal(isUnknownMutationError(new Error('Unexpected failure')), true)
+})
+
+test('a timed-out mutation is not replayed and a delayed reply cannot settle a newer request', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const frames = []
+  const client = new WorkerClient((raw) => frames.push(JSON.parse(raw)))
+  const rejected = assert.rejects(client.request('entries.add', { title: 'Once', body: '' }, 10), {
+    code: 'TIMEOUT'
+  })
+  t.mock.timers.tick(10)
+  await rejected
+  assert.equal(frames.length, 1)
+  const newer = client.request('status', {})
+  client.receive(response(frames[0].id))
+  client.receive(response(frames[0].id))
+  assert.equal(client.pending.size, 1)
+  client.receive(response(frames[1].id))
+  assert.deepEqual(await newer, status)
+  assert.equal(frames.length, 2, 'there is no automatic mutation retry')
+  assert.equal(client.pending.size, 0)
+  client.close()
+})
+
+test('repeated subscription cleanup retains only the application subscriber', () => {
+  const client = new WorkerClient(() => {})
+  let changes = 0
+  client.subscribe(() => {
+    changes++
+  })
+  for (let i = 0; i < 50; i++) {
+    const unsubscribe = client.subscribe(() => assert.fail('stale screen subscriber'))
+    unsubscribe()
+    unsubscribe()
+  }
+  assert.equal(client.listeners.size, 1)
+  client.receive(JSON.stringify({ v: 1, type: 'event', event: 'changed', payload: null }))
+  assert.equal(changes, 1)
+  client.close()
+  assert.equal(client.listeners.size, 0)
 })

@@ -178,4 +178,21 @@ function createListRefresher(load, onValue, onError) {
   }
 }
 
-module.exports = { WorkerClient, createListRefresher }
+// These failures reject before a notebook mutation. Other failures can be ambiguous:
+// a timeout/disconnect does not cancel work already accepted by Bare.
+function isUnknownMutationError(error) {
+  const denied = [
+    'INVALID_MESSAGE',
+    'UNSUPPORTED_VERSION',
+    'INVALID_PAYLOAD',
+    'UNKNOWN_OPERATION',
+    'READ_ONLY',
+    'NOT_READY',
+    'BUSY',
+    'ENTRY_NOT_FOUND',
+    'INVALID_ACK'
+  ]
+  return !denied.includes(error && error.code)
+}
+
+module.exports = { WorkerClient, createListRefresher, isUnknownMutationError }

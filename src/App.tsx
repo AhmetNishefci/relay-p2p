@@ -50,18 +50,22 @@ export default function App() {
   function back() {
     if (busy) return
     if (screen === 'editor' && dirty) {
-      Alert.alert('Discard this draft?', 'This entry has not been saved.', [
-        { text: 'Keep writing', style: 'cancel' },
-        {
-          text: 'Discard draft',
-          style: 'destructive',
-          onPress: () => {
-            setTitle('')
-            setBody('')
-            go('home')
+      Alert.alert(
+        'Discard this draft?',
+        'This only discards the text on this screen. Notebook entries are kept.',
+        [
+          { text: 'Keep writing', style: 'cancel' },
+          {
+            text: 'Discard draft',
+            style: 'destructive',
+            onPress: () => {
+              setTitle('')
+              setBody('')
+              go('home')
+            }
           }
-        }
-      ])
+        ]
+      )
     } else go('home')
   }
   useEffect(() => {
@@ -106,13 +110,24 @@ export default function App() {
   }
   const notices = (
     <View style={styles.notices}>
-      {!!notebook.error && (
+      {(!!notebook.error || notebook.mutationUnknown) && (
         <View style={ui.stack}>
-          <Notice text={notebook.error} error />
+          <Notice
+            text={
+              notebook.error ||
+              'An earlier change may already be recorded. Check again to review the notebook before retrying.'
+            }
+            error
+          />
           <Button
             label='Check again'
             variant='quiet'
-            onPress={notebook.checkStatus}
+            onPress={async () => {
+              if (await notebook.checkStatus()) {
+                Keyboard.dismiss()
+                setScreen('home')
+              }
+            }}
             disabled={busy}
           />
         </View>
@@ -272,7 +287,7 @@ export default function App() {
           <Button
             label={busy ? 'Saving…' : 'Save entry'}
             pending={busy}
-            disabled={!title.trim() || !worker.writable}
+            disabled={!title.trim() || !worker.writable || notebook.mutationUnknown}
             onPress={save}
             testID='add-entry'
           />
@@ -306,7 +321,7 @@ export default function App() {
                 records={acknowledgments.filter((ack) => ack.entryId === selected.id)}
                 localWriterKey={localWriterKey}
                 writable={worker.writable}
-                busy={busy}
+                busy={busy || notebook.mutationUnknown}
                 pending={notebook.pendingAcknowledgment === selected.id}
                 onAcknowledge={() => notebook.acknowledgeEntry(selected.id)}
               />
@@ -314,7 +329,7 @@ export default function App() {
                 <Button
                   label='Remove entry'
                   variant='danger'
-                  disabled={busy}
+                  disabled={busy || notebook.mutationUnknown}
                   onPress={() => remove(selected)}
                   testID='remove-entry'
                 />

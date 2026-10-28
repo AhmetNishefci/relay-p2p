@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { reloadAppAsync } from 'expo-modules-core'
 import type { Entry, Acknowledgment, WorkerStatus } from '../shared/protocol'
 import { getWorkerSession } from './worker/runtime'
-import { createListRefresher } from './worker/client'
+import { createListRefresher, isUnknownMutationError } from './worker/client'
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : 'Operation failed.')
 
 export function useNotebook() {
@@ -16,6 +16,8 @@ export function useNotebook() {
   const [feedback, setFeedback] = useState('')
   const [busy, setBusy] = useState(false)
   const locked = useRef(false)
+  const uncertain = useRef<{ pending: true } | null>(null)
+  const [mutationUnknown, setMutationUnknown] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [skipped, setSkipped] = useState(0)
   const [pearStatus, setPearStatus] = useState('')
@@ -46,7 +48,7 @@ export function useNotebook() {
         ready = status.state === 'ready'
         if (status.state !== 'starting') clearTimeout(startupTimer)
         setWorker(status)
-        if (ready) setError('')
+        if (ready && !uncertain.current) setError('')
         if (ready) refresher.invalidate()
         else {
           setLoaded(false)
@@ -136,7 +138,7 @@ export function useNotebook() {
   }
 
   async function addEntry(title: string, body: string) {
-    if (locked.current) return null
+    if (locked.current || uncertain.current) return null
     locked.current = true
     setBusy(true)
     setError('')
@@ -148,7 +150,7 @@ export function useNotebook() {
       await refreshAfterWrite()
       return entry
     } catch (err) {
-      setError(messageOf(err))
+      mutationFailed(err)
     } finally {
       locked.current = false
       setBusy(false)
@@ -156,7 +158,7 @@ export function useNotebook() {
   }
 
   async function removeEntry(id: string) {
-    if (locked.current) return null
+    if (locked.current || uncertain.current) return null
     locked.current = true
     setBusy(true)
     setError('')
@@ -167,29 +169,49 @@ export function useNotebook() {
       await refreshAfterWrite()
       return true
     } catch (err) {
-      setError(messageOf(err))
+      mutationFailed(err)
     } finally {
       locked.current = false
       setBusy(false)
     }
   }
 
+  function mutationFailed(error: unknown) {
+    if (isUnknownMutationError(error)) {
+      uncertain.current = { pending: true }
+      setMutationUnknown(true)
+    }
+    setError(messageOf(error))
+  }
+
   async function checkStatus() {
+    const previous = uncertain.current
     setError('')
     try {
       const status = await getWorkerSession().client.request('status', {})
       setWorker(status)
-      if (status.state === 'ready') await refreshRef.current?.()
+      if (status.state === 'ready') {
+        await refreshRef.current?.()
+        if (previous && uncertain.current === previous) {
+          uncertain.current = null
+          setMutationUnknown(false)
+          setFeedback(
+            'Notebook refreshed. Review entries before retrying; the earlier change may already be present.'
+          )
+          return true
+        }
+      }
       if (status.state === 'failed') {
         setError('Notebook failed to initialize. Restart the app; data is retained.')
       }
     } catch (err) {
       setError(messageOf(err))
     }
+    return false
   }
 
   async function acknowledgeEntry(entryId: string) {
-    if (locked.current) return null
+    if (locked.current || uncertain.current) return null
     locked.current = true
     setBusy(true)
     setPendingAcknowledgment(entryId)
@@ -213,7 +235,7 @@ export function useNotebook() {
       )
       await refreshAfterWrite()
     } catch (err) {
-      setError(messageOf(err))
+      mutationFailed(err)
     } finally {
       setPendingAcknowledgment(null)
       locked.current = false
@@ -238,6 +260,7 @@ export function useNotebook() {
     acknowledgments,
     localWriterKey,
     busy,
+    mutationUnknown,
     loaded,
     pendingAcknowledgment,
     skipped,
@@ -250,7 +273,7 @@ export function useNotebook() {
     checkStatus,
     refresh,
     clearFeedback: () => {
-      setError('')
+      if (!uncertain.current) setError('')
       setFeedback('')
     },
     pearStatus,

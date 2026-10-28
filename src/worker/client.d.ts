@@ -16,3 +16,5 @@ export function createListRefresher<T>(
   onValue: (value: T) => void,
   onError: (error: unknown) => void
 ): { refresh(): Promise<void>; invalidate(): void; close(): void }
+
+export function isUnknownMutationError(error: unknown): boolean
