@@ -30,7 +30,7 @@ JavaScript cannot override that choice.
 ## Commands
 
 ```sh
-npm install
+npm ci
 npm run bundle:bare          # REQUIRED before any run — builds src/worker.bundle.js
 npm run ios                  # expo run:ios
 npm run android              # expo run:android
@@ -56,9 +56,9 @@ Upstream commits the placeholder `pear://<YOUR_KEY_HERE>`; this assessment check
 configures a real development link using `pear touch`. The placeholder does not survive a boot: `PearRuntimeUpdater`'s constructor calls
 `link.parse(opts.upgrade)` unconditionally — it records the `updates` flag but never
 lets it gate the parse — so the placeholder throws `ERR_INVALID_URL` and kills the
-worklet at startup **even in development, where this template disables updates**. React Native never
-learns the worker died — the UI renders `v<version>` and simply nothing else ever
-arrives. A working dev run needs a real link from `pear touch` in `package.json`.
+worklet at startup **even in development, where this template disables updates**. The original
+demo never learned the worker died; Relay now reports bounded startup/request failures.
+A working dev run still needs a real link from `pear touch` in `package.json`.
 
 The pinned baseline uses registry dependencies and `npm ci` was verified in Phase 1.
 Use the committed lockfile. Phase 2 adds Autopass 3.4.1 and promotes the copied

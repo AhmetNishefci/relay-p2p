@@ -67,5 +67,5 @@ the rules for keeping them ordered are in [pinned upstream manual](https://githu
 
 - The shared deployment flow (`pear touch` → `pear stage` → `pear provision` →
   `pear multisig`) is documented in [Pear Docs](https://docs.pears.com/how-to/operate-an-app/manual-deployment/deployment/).
-  [README](../README.md#deployments) links to it and keeps the mobile OTA payload and
+  [pinned upstream manual](https://github.com/holepunchto/hello-pear-react-native/blob/4ad3f8df5b5f20ce7621c42457795d53b2248c9b/README.md#deployments) keeps the optional mobile OTA payload and
   versioning guidance. Deployment is never an agent's call.

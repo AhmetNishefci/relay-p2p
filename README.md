@@ -24,6 +24,7 @@ Original Apache-2.0 [LICENSE](LICENSE) and [NOTICE](NOTICE) are retained.
 Install these prerequisites before running commands:
 
 - Node **22.23.3** (`.nvmrc`), npm, and Git.
+- Python 3 for transcript-export tests and integrity checks.
 - **JDK 17**. Newer JDKs are not a supported substitute for this template.
 - Android Studio / command-line tools, platform-tools, emulator, API **36**, build
   tools, and NDK **27.1.12297006**. Native libraries also use API 34 and NDK
@@ -45,7 +46,7 @@ export ANDROID_SDK_ROOT="$ANDROID_HOME"
 export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 java -version                          # 17
 npm ci
-npx --yes pear -v                      # supported on-demand Pear CLI setup/check
+npx --yes pear@3.0.0 -v                # verified on-demand CLI wrapper
 npm run check:upgrade
 npm run bundle:bare
 emulator -list-avds
