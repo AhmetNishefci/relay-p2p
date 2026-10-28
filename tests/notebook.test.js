@@ -91,7 +91,13 @@ test('foreign/invalid records are isolated; read-only writes and closed service 
     'entry:' + entry.id,
     JSON.stringify({ ...entry, future: { internal: true } })
   )
-  assert.deepEqual(await notebook.run('entries.list', {}), { entries: [entry], skipped: 2 })
+  assert.deepEqual(await notebook.run('entries.list', {}), {
+    entries: [entry],
+    skipped: 2,
+    acknowledgments: [],
+    skippedAcknowledgments: 1,
+    localWriterKey: notebook.pass.writerKey.toString('hex')
+  })
   const writable = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(notebook.pass), 'writable')
   assert.ok(writable.get)
   Object.defineProperty(notebook.pass, 'writable', { value: false, configurable: true })

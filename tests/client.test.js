@@ -5,6 +5,13 @@ const { WorkerClient, createListRefresher } = require('../src/worker/client')
 const status = { state: 'ready', writable: true }
 const response = (id, result = status) =>
   JSON.stringify({ v: 1, type: 'response', id, ok: true, result })
+const emptySnapshot = {
+  entries: [],
+  skipped: 0,
+  acknowledgments: [],
+  skippedAcknowledgments: 0,
+  localWriterKey: 'a'.repeat(64)
+}
 const tick = () => new Promise((resolve) => setImmediate(resolve))
 
 test('correlates out-of-order responses and ignores duplicate/late responses', async () => {
@@ -13,10 +20,10 @@ test('correlates out-of-order responses and ignores duplicate/late responses', a
   const a = client.request('status', {})
   const b = client.request('entries.list', {})
   assert.notEqual(frames[0].id, frames[1].id)
-  client.receive(response(frames[1].id, { entries: [], skipped: 0 }))
+  client.receive(response(frames[1].id, emptySnapshot))
   client.receive(response(frames[0].id))
   assert.deepEqual(await a, status)
-  assert.deepEqual(await b, { entries: [], skipped: 0 })
+  assert.deepEqual(await b, emptySnapshot)
   client.receive(response(frames[0].id))
   client.close()
 })

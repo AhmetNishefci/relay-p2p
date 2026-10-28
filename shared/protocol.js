@@ -1,7 +1,9 @@
 const VERSION = 1
 const MAX_MESSAGE_LENGTH = 2_000_000
 const MAX_ENTRIES = 200
+const MAX_ACKNOWLEDGMENTS = 1000
 const ID = /^[a-f0-9]{32}$/
+const WRITER_KEY = /^[a-f0-9]{64}$/
 
 class Fault extends Error {
   constructor(code, message) {
@@ -69,6 +71,9 @@ function validateRequest(value) {
     case 'entries.remove':
       if (fields(payload, ['id']) && entryId(payload.id)) return value
       break
+    case 'entries.acknowledge':
+      if (fields(payload, ['entryId']) && entryId(payload.entryId)) return value
+      break
     default:
       throw new Fault('UNKNOWN_OPERATION', 'Unknown operation.')
   }
@@ -86,6 +91,19 @@ function isEntry(value) {
     text(value.body, 8000) &&
     Number.isSafeInteger(value.createdAt) &&
     value.createdAt >= 0
+  )
+}
+
+function isAcknowledgment(value) {
+  return (
+    object(value) &&
+    value.schemaVersion === 1 &&
+    value.kind === 'ack' &&
+    entryId(value.entryId) &&
+    typeof value.writerKey === 'string' &&
+    WRITER_KEY.test(value.writerKey) &&
+    Number.isSafeInteger(value.acknowledgedAt) &&
+    value.acknowledgedAt >= 0
   )
 }
 
@@ -133,6 +151,13 @@ function isResult(op, value) {
     )
   }
   if (op === 'entries.add') return isEntry(value)
+  if (op === 'entries.acknowledge') {
+    return (
+      object(value) &&
+      isAcknowledgment(value.acknowledgment) &&
+      typeof value.alreadyRecorded === 'boolean'
+    )
+  }
   if (op === 'entries.remove') return object(value) && entryId(value.id) && value.removed === true
   return (
     op === 'entries.list' &&
@@ -141,7 +166,14 @@ function isResult(op, value) {
     value.entries.length <= MAX_ENTRIES &&
     value.entries.every(isEntry) &&
     Number.isSafeInteger(value.skipped) &&
-    value.skipped >= 0
+    value.skipped >= 0 &&
+    Array.isArray(value.acknowledgments) &&
+    value.acknowledgments.length <= MAX_ACKNOWLEDGMENTS &&
+    value.acknowledgments.every(isAcknowledgment) &&
+    typeof value.localWriterKey === 'string' &&
+    WRITER_KEY.test(value.localWriterKey) &&
+    Number.isSafeInteger(value.skippedAcknowledgments) &&
+    value.skippedAcknowledgments >= 0
   )
 }
 
@@ -177,11 +209,13 @@ function publicError(error) {
 module.exports = {
   VERSION,
   MAX_ENTRIES,
+  MAX_ACKNOWLEDGMENTS,
   Fault,
   parseJSON,
   validateRequest,
   requestId,
   isEntry,
+  isAcknowledgment,
   isResult,
   validateServerMessage,
   publicError

@@ -1,7 +1,13 @@
 const Corestore = require('corestore')
 const Autopass = require('autopass')
 const crypto = require('hypercore-crypto')
-const { Fault, MAX_ENTRIES, isEntry } = require('../shared/protocol')
+const {
+  Fault,
+  MAX_ENTRIES,
+  MAX_ACKNOWLEDGMENTS,
+  isEntry,
+  isAcknowledgment
+} = require('../shared/protocol')
 
 class Notebook {
   constructor(
@@ -88,9 +94,39 @@ class Notebook {
     }
     if (op === 'entries.list') {
       const entries = []
+      const acknowledgments = []
       let skipped = 0
+      let skippedAcknowledgments = 0
       let snapshotLength = 0
       for await (const record of this.pass.list()) {
+        if (record.key.startsWith('ack:')) {
+          let acknowledgment
+          try {
+            acknowledgment = JSON.parse(record.value)
+          } catch {
+            skippedAcknowledgments++
+            continue
+          }
+          if (
+            !isAcknowledgment(acknowledgment) ||
+            record.key !== `ack:${acknowledgment.entryId}:${acknowledgment.writerKey}`
+          ) {
+            skippedAcknowledgments++
+            continue
+          }
+          const { schemaVersion, kind, entryId, writerKey, acknowledgedAt } = acknowledgment
+          const normalized = { schemaVersion, kind, entryId, writerKey, acknowledgedAt }
+          // Bound all decoded acknowledgment data, including hidden orphans.
+          if (acknowledgments.length >= MAX_ACKNOWLEDGMENTS) {
+            throw new Fault('LIST_LIMIT', 'Notebook exceeds the acknowledgment snapshot limit.')
+          }
+          snapshotLength += JSON.stringify(normalized).length
+          if (snapshotLength > 1_500_000) {
+            throw new Fault('LIST_LIMIT', 'Notebook exceeds the foundation snapshot size limit.')
+          }
+          acknowledgments.push(normalized)
+          continue
+        }
         if (!record.key.startsWith('entry:')) continue
         let entry
         try {
@@ -119,9 +155,71 @@ class Notebook {
       }
       // Local presentation order only; timestamps are not distributed ordering evidence.
       entries.sort((a, b) => b.createdAt - a.createdAt || a.id.localeCompare(b.id))
-      return { entries, skipped }
+      const visibleIds = new Set(entries.map((entry) => entry.id))
+      const associated = acknowledgments.filter((ack) => visibleIds.has(ack.entryId))
+      // Stable display order; acknowledgment timestamps do not resolve conflicts.
+      associated.sort(
+        (a, b) => a.entryId.localeCompare(b.entryId) || a.writerKey.localeCompare(b.writerKey)
+      )
+      return {
+        entries,
+        skipped,
+        acknowledgments: associated,
+        skippedAcknowledgments,
+        localWriterKey: this.pass.writerKey.toString('hex')
+      }
     }
     if (!this.pass.writable) throw new Fault('READ_ONLY', 'This notebook does not allow writes.')
+    if (op === 'entries.acknowledge') {
+      const record = await this.pass.get('entry:' + payload.entryId)
+      let entry
+      try {
+        entry = record && JSON.parse(record.value)
+      } catch {
+        entry = null
+      }
+      if (!isEntry(entry) || entry.id !== payload.entryId) {
+        throw new Fault(
+          'ENTRY_NOT_FOUND',
+          'Entry is unavailable or unsupported. Refresh the notebook.'
+        )
+      }
+      const writerKey = this.pass.writerKey.toString('hex')
+      const key = `ack:${payload.entryId}:${writerKey}`
+      const existing = await this.pass.get(key)
+      if (existing) {
+        let acknowledgment
+        try {
+          acknowledgment = JSON.parse(existing.value)
+        } catch {
+          acknowledgment = null
+        }
+        if (
+          !isAcknowledgment(acknowledgment) ||
+          acknowledgment.entryId !== payload.entryId ||
+          acknowledgment.writerKey !== writerKey
+        ) {
+          throw new Fault(
+            'INVALID_ACK',
+            'Existing acknowledgment is invalid. Refresh before retrying.'
+          )
+        }
+        const { schemaVersion, kind, entryId, acknowledgedAt } = acknowledgment
+        return {
+          acknowledgment: { schemaVersion, kind, entryId, writerKey, acknowledgedAt },
+          alreadyRecorded: true
+        }
+      }
+      const acknowledgment = {
+        schemaVersion: 1,
+        kind: 'ack',
+        entryId: payload.entryId,
+        writerKey,
+        acknowledgedAt: Date.now()
+      }
+      await this.pass.add(key, JSON.stringify(acknowledgment))
+      return { acknowledgment, alreadyRecorded: false }
+    }
     if (op === 'invite.create') {
       return {
         invite: await this.pass.createInvite({ readOnly: payload.readOnly }),

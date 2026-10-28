@@ -6,6 +6,20 @@ export type Entry = {
   body: string
   createdAt: number
 }
+export type Acknowledgment = {
+  schemaVersion: 1
+  kind: 'ack'
+  entryId: string
+  writerKey: string
+  acknowledgedAt: number
+}
+export type EntrySnapshot = {
+  entries: Entry[]
+  skipped: number
+  acknowledgments: Acknowledgment[]
+  localWriterKey: string
+  skippedAcknowledgments: number
+}
 export type WorkerStatus = {
   state: 'starting' | 'idle' | 'joining' | 'ready' | 'failed' | 'closed'
   writable: boolean
@@ -22,7 +36,11 @@ export type Operations = {
   'invite.create': { payload: { readOnly: boolean }; result: { invite: string; readOnly: boolean } }
   'invite.cancel': { payload: Record<string, never>; result: { cancelled: true } }
   'participants.list': { payload: Record<string, never>; result: { participants: Participant[] } }
-  'entries.list': { payload: Record<string, never>; result: { entries: Entry[]; skipped: number } }
+  'entries.list': { payload: Record<string, never>; result: EntrySnapshot }
+  'entries.acknowledge': {
+    payload: { entryId: string }
+    result: { acknowledgment: Acknowledgment; alreadyRecorded: boolean }
+  }
   'entries.add': { payload: { title: string; body: string }; result: Entry }
   'entries.remove': { payload: { id: string }; result: { id: string; removed: true } }
 }
@@ -46,6 +64,7 @@ export type Response =
   | { v: 1; type: 'response'; id: string | null; ok: false; error: PublicError }
 export const VERSION: 1
 export const MAX_ENTRIES: number
+export const MAX_ACKNOWLEDGMENTS: number
 export class Fault extends Error {
   code: string
   constructor(code: string, message: string)
@@ -54,6 +73,7 @@ export function parseJSON(raw: string): unknown
 export function validateRequest(value: unknown): Request
 export function requestId(value: unknown): value is string
 export function isEntry(value: unknown): value is Entry
+export function isAcknowledgment(value: unknown): value is Acknowledgment
 export function isResult(op: Operation, value: unknown): boolean
 export function validateServerMessage(value: unknown): value is WorkerEvent | Response
 export function publicError(error: unknown): PublicError
