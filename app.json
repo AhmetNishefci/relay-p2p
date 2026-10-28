@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Hello Pear React Native",
+    "name": "Relay",
     "slug": "hello-pear-react-native",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,7 +19,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#F7F5EF"
     },
     "ios": {
       "supportsTablet": true,
@@ -28,7 +28,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#285C50"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.hellopearreactnative"
