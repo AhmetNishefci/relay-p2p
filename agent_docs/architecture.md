@@ -99,3 +99,60 @@ facts.
   `pear seed <link> --json` prints `firewalled` and `natType`, and `natType: "Random"`
   is symmetric NAT, which defeats holepunching. Mobile networks make this more likely,
   not less. Before debugging app logic, confirm replication works at all.
+
+## Native execution and profiling boundaries
+
+The pinned Android build uses React Native 0.83.2 / Expo 55.0.29. Generated
+`android/gradle.properties` has `newArchEnabled=true` and `hermesEnabled=true`;
+`MainActivity.kt` uses the default Fabric delegate. These generated files are
+inspection evidence, not files to edit or commit. Configuration flows through Expo
+and the pinned plugin. Fabric renders native views; it does not eliminate React
+render work, JSON parsing or text-layout costs.
+
+Bare Kit 0.12.3 declares `codegenConfig` and a `NativeBareKit` TurboModule spec, loaded
+with `TurboModuleRegistry.getEnforcing('BareKit')`. Its C++ module uses React Native JSI and a
+call invoker to access the Bare worklet/IPC. This is dependency-provided integration:
+Relay has no handwritten TurboModule, custom Fabric component or custom JSI bridge.
+The Pear plugin also generates the native Expo reload module; that is plugin output,
+not candidate-authored native code.
+
+The React Native UI runs in Hermes; Autopass runs in a distinct Bare runtime/worklet.
+They live within the same application process, not separate OS security sandboxes.
+A native assertion or addon crash can terminate the entire process. A controlled
+worklet termination can close IPC while RN survives; these are different failure
+modes. Native `read()` explicitly copies IPC bytes into a JSI ArrayBuffer. Neither
+zero-copy transfer nor automatic off-thread JSON parsing is claimed.
+
+```mermaid
+flowchart LR
+  UI["React Native UI / Hermes / Fabric"] --> Client["Typed client + JSON validation"]
+  Client <--> IPC["FramedStream over Bare Kit IPC"]
+  IPC <--> Bare["Bare worklet"]
+  Bare --> Notes["Autopass + notebook Corestore"]
+  Bare --> Updates["Pear updater + separate Corestore"]
+  Notes <--> Peers["Hyperswarm peers"]
+```
+
+Native packages are autolinked/code-generated; Bare Kit's CMake and addon packaging
+supply the prelinked native libraries used by `bare-pack --linked`. Matching JS
+package versions to those binaries remains essential. Android ARM64 is the verified
+runtime target; producing other ABI artifacts does not prove those ABIs work.
+
+Debug gets RN JavaScript from Metro, sends the updater flag `false`, and bypasses
+native OTA bundle selection. Standalone release embeds RN JavaScript, sends `true`,
+and uses the plugin's native manifest/version check for optional OTA selection.
+No actual OTA deployment/apply is verified by local build success. Phase 7 changes
+neither update timing nor native identity, dependencies or generated native code.
+
+Inspection points after `npm ci`: `react-native-bare-kit/specs/NativeBareKit.ts`,
+`react-native-bare-kit/shared/BareKitModule.cc` (`read()`), its `package.json`
+`codegenConfig`, and `android/CMakeLists.txt` under `node_modules/`. Relay's runtime
+entry is `src/worker/runtime.ts`; the copied Pear lifecycle and application service
+are in `workers/main.js`. Generated Android properties/delegates and the release
+APK library list were inspected directly; they are not substitute source files.
+
+Profile release for user-visible timings. React DevTools/debug instrumentation can
+explain commits and subscriptions, but its timings are not release benchmarks.
+Keep UI/main-thread frame measurements distinct from RN JS work, Bare work, and
+whole-process PSS (which includes both runtimes and native memory). See
+[Phase 7 measurements](../docs/PHASE7.md) for executed results and limitations.

@@ -116,12 +116,14 @@ npm test                               # formatting, lint, real Autopass/IPC tes
 npx tsc --noEmit
 python3 -m unittest discover -s scripts/tests  # transcript-export integrity/privacy
 npm run bundle:bare
+node scripts/benchmark-foundation.js    # Node/V8 diagnostics, not Android timings
 ```
 
 Tests include real isolated Corestores and local DHT peers. Native Android tests
 are separate: create/join, bidirectional writes/removal, Viewer rejection, replicated
 acknowledgment, airplane-mode reconnect, persistence and background/resume. See
-[engineering audit and actual results](docs/AUDIT.md) and [product QA](docs/PHASE5.md).
+[engineering audit](docs/AUDIT.md), [product QA](docs/PHASE5.md), and
+[Phase 7 measurements and reliability tests](docs/PHASE7.md).
 GitHub CI configuration is not evidence of a GitHub run before the repository exists.
 
 ## DECISIONS
@@ -184,12 +186,17 @@ See [pairing behavior and tests](docs/PHASE3.md).
 - One active notebook per installation. No editor for existing entries or file
   attachments; attachments are optional in the assessment.
 - Snapshots are bounded to 200 entries and 1,000 valid acknowledgment records
-  (including retained orphans); exceeding limits fails visibly. No pagination yet.
+  (including retained orphans), with a 1,500,000-character normalized budget. JSON
+  IPC also has a 4,600,000-byte ceiling that preserves these supported sizes.
+  Exceeding limits fails visibly. No pagination yet.
 - Peer exchange depends on connectivity and foreground execution. No background
   delivery, fully-synced, verified-person, read-receipt or remote-erasure guarantees.
 - An IPC timeout leaves the mutation outcome unknown. No automatic write replay is
-  performed. Use **Check again**, review the notebook, and reconcile before retrying
-  a save; add operations do not have an exactly-once token.
+  performed. Further entry writes in the current session are blocked until a fresh
+  status/snapshot succeeds.
+  Use **Review notebook** in the editor (or **Check again**), inspect the result,
+  and reconcile before retrying; the draft is retained. A delayed write can still
+  complete after refresh. Adds have no exactly-once token.
 - Android owner-user ARM64 emulators are verified. Physical devices, iOS, TalkBack
   spoken output, unusual cutouts and three-button navigation remain unverified.
 - Pinned tooling has remaining dependency advisories. The audit records their scope;

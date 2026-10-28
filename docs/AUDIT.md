@@ -1,5 +1,9 @@
 # Final engineering and submission audit
 
+This report records the Phase 6 audit. [Phase 7](PHASE7.md) supersedes its refresh
+drain behavior with per-read completion and adds payload/reliability measurements.
+The authorship and publication blockers below remain unresolved.
+
 The live assessment was retrieved through GitHub's public Gist API on October 28,
 2026 after the HTML reader failed. Source:
 [original assessment](https://gist.github.com/chocky335/f4d214c26a64307a94f6ec46b9620c80).
