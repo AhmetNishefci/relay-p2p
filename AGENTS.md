@@ -1,9 +1,10 @@
 # AGENTS.md
 
-Holepunch's boilerplate for Expo/React Native mobile apps with **peer-to-peer OTA
-updates** (no update server). The demo UI is trivial on purpose: the plumbing is the
-product and forks build their app on top of it. Unlike the desktop siblings, an OTA
-here replaces the **JavaScript bundle** the app boots from — native code still ships
+Relay is a local-first shared field notebook built from the pinned Holepunch
+Expo/React Native template. Its original demo UI is replaced by welcome/join,
+notebook, editor, entry/handoff and sharing screens; see `docs/PHASE5.md`. The
+template's **peer-to-peer OTA updates** remain intact (no update server). Unlike the
+desktop siblings, an OTA here replaces the **JavaScript bundle** the app boots from — native code still ships
 through the App Store and Play Store, so this template carries a second version gate
 (`pear.json` `updates.minver`) that the desktop templates do not need.
 
@@ -75,7 +76,7 @@ versions changed. Never use broad upgrades to bypass native compatibility proble
   `'false'` enables updates
 - One FramedStream carries the original Pear UTF-8 control strings and versioned JSON
   application requests/responses/events. See `shared/protocol.js` / `.d.ts` and
-  `docs/PHASE2.md`, `docs/PHASE3.md`, and `docs/PHASE4.md`. Unknown or malformed application frames receive structured errors;
+  `docs/PHASE2.md`, `docs/PHASE3.md`, `docs/PHASE4.md`, and `docs/PHASE5.md`. Unknown or malformed application frames receive structured errors;
   entry bodies and raw internal errors are never logged as application requests.
 - One version drives everything: `package.json#version` → `app.config.js` → Expo →
   iOS `CFBundleShortVersionString` / Android `versionName` → the native boot comparison,

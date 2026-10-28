@@ -1,9 +1,46 @@
-> **Assessment baseline:** imported from upstream commit `4ad3f8df5b5f20ce7621c42457795d53b2248c9b`.
-> See [Android baseline setup and evidence](docs/PHASE1.md) and [AI assistance disclosure](docs/AI_USAGE.md).
-> [Phase 2](docs/PHASE2.md) adds the persistent Autopass/IPC foundation and a minimal verification UI.
-> [Phase 3](docs/PHASE3.md) adds Contributor/Viewer pairing and verified independent-peer replication.
-> [Phase 4](docs/PHASE4.md) adds explicit peer acknowledgment records and their trust limits.
-> Final Relay visual design is not implemented yet.
+# Relay
+
+A local-first shared field notebook with direct peer exchange and explicit acknowledgments.
+
+Create a notebook or join with an invitation. Contributors can save, remove, and
+acknowledge entries; Viewers can read. Entries save on this device. Acknowledgments
+are separate shared records, not proof of reading, verified identity, or delivery.
+Keep both apps open and connected for peer exchange; local writes work offline.
+
+The notebook list opens into focused entry details. Use **New entry** to capture a
+note, **Acknowledge** for an explicit handoff, and **Share** to choose Contributor or
+Viewer access. Invitations grant access to whoever has them. Canceling an invitation
+does not revoke existing participant access. Use **Share or copy invitation** to open the native share sheet, then choose
+**Copy text** or a trusted app. Generated invitation text stays out of the sharing screen.
+
+## Run on Android
+
+Use Node **22.23.3** (`.nvmrc`), JDK 17, and the Android SDK/NDK described in
+[baseline setup](docs/PHASE1.md). From this directory:
+
+```sh
+npm ci
+npm run check:upgrade
+npm run bundle:bare
+npm run android
+# Standalone build:
+npm run production:android
+```
+
+Rebundle after worker changes. All storage, networking, and permission enforcement
+stay inside Bare. No central application server is required; discovery still depends
+on the network. See the [architecture](agent_docs/architecture.md),
+[foundation](docs/PHASE2.md), [pairing](docs/PHASE3.md),
+[handoff semantics](docs/PHASE4.md), and [product QA](docs/PHASE5.md).
+The two assessment decisions are documented in [DECISIONS](#decisions).
+[AI usage and authentic transcript preservation](docs/AI_USAGE.md) disclose generated
+implementation honestly; those notes are not original transcripts.
+
+The official template baseline is `4ad3f8df5b5f20ce7621c42457795d53b2248c9b`.
+Its original manual and license are retained below. Native runtime/package identity
+is unchanged.
+
+---
 
 # hello-pear-react-native <a name="hello-pear-react-native"></a>
 

@@ -4,7 +4,8 @@
 > startup, IPC or bundling. Only non-obvious, code-verified facts — the code is the
 > reference for everything else. Index: [AGENTS.md](../AGENTS.md).
 
-React Native view (`src/App.tsx`) → one app-lifetime client (`src/worker/runtime.ts`)
+React Native screens (`src/App.tsx`, sharing/handoff components) →
+`src/useNotebook.ts` (one mounted controller, coalesced entry snapshots) → one app-lifetime client (`src/worker/runtime.ts`)
 ↔ `FramedStream` over BareKit IPC ↔ Bare worker (`workers/main.js`: copied updater
 scaffolding plus an isolated Autopass notebook). The code is small — read it for the wiring; below are only the non-obvious
 facts.
@@ -54,6 +55,10 @@ facts.
   to `linked:` specifiers that `react-native-bare-kit` has prelinked as xcframeworks /
   `.so`s. Adding a worker dependency with a native addon that BareKit does not already
   vendor will bundle fine and then fail to link at runtime.
+- Screen presentation is keyed by route to reset scroll/press state. The controller
+  stays mounted above that subtree; navigation does not create a worklet or replace
+  the FramedStream. UI mutations use a synchronous ref guard in addition to disabled
+  controls; worker validation/permissions remain authoritative.
 - Worklets are **suspended and resumed with the app**: `react-native-bare-kit` registers
   a global `AppState` listener that calls `suspend()` on `background` and `resume()` on
   `active` for every live worklet. Backgrounded P2P work stops; do not assume the swarm

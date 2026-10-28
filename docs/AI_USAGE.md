@@ -67,6 +67,18 @@ actual controls; failed local UI-selector/startup attempts are preserved and are
 reported as passed tests. Candidate review/modification of acknowledgment meaning,
 trust, idempotence, retention, and state language remain required before submission.
 
+## Phase 5: product interface and verification
+
+The candidate authorized product polish. Codex generated the screen presentation,
+shared visual components, controller extraction, invitation/participant presentation,
+confirmation and keyboard behavior, and documentation. It generated local Android
+UI drivers, inspected actual screenshots, and performed the checks recorded in
+PHASE5.md. Native dependencies and worker/protocol schemas were preserved.
+
+This implementation is AI-generated. No candidate-authored code, completed human
+review, or meaningful candidate modification is claimed. Failed environment/test
+attempts remain in the authentic logs; summaries do not replace those records.
+
 ## Authentic records
 
 Original Codex session identifier: `01a18158-3cb1-7e70-a804-2b4d3c33e634`.
