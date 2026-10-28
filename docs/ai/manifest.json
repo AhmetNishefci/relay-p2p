@@ -1,24 +1,24 @@
 {
   "description": "Genuine visible records, filtered and privacy-redacted; not an unmodified original.",
-  "captured_at_utc": "2026-10-28T18:02:26.672733+00:00",
+  "captured_at_utc": "2026-10-28T18:46:42.674741+00:00",
   "sources": {
     "rollout-2026-10-28T08-10-06-01a18158-3cb1-7e70-a804-2b4d3c33e634.jsonl": {
-      "sha256": "e0be3825f8dcbc27d748c20df843149481bd0e3333ed9a50a42a3ca20c1f048a",
-      "bytes": 57442617,
-      "last_timestamp": "2026-10-28T18:02:25.593Z",
-      "visible_records": 1806
+      "sha256": "154f7f458f208ac7bccf52b7166c180ced069a021a6b88fa585d6a00ec6c3e05",
+      "bytes": 58805349,
+      "last_timestamp": "2026-10-28T18:46:41.653Z",
+      "visible_records": 1940
     }
   },
   "export_file": "codex-visible.jsonl.gz",
-  "export_sha256": "308c838283d79c266733e91c8353874836b668adce541d688c8d32e8a7f03baa",
-  "decompressed_sha256": "c779b835a5cf24604edb1dfcc6237c17d2e1c42cad9204a4f48ebecc30106a68",
-  "exported_records": 1806,
+  "export_sha256": "e32f50b3e08e90ad4aebd1461fa042748281925084fbe3243c6b39797c87b9b7",
+  "decompressed_sha256": "edd5b6752db5509bb6413e8d605bcfd989028b5f5374134a36780660d4c434ed",
+  "exported_records": 1940,
   "redaction_counts": {
     "private_keys": 0,
     "credentials": 0,
     "possible_invite_capabilities": 0,
     "encoded_machine_or_binary_data": 2,
-    "home_paths": 588,
+    "home_paths": 634,
     "unrelated_project_roots": 23,
     "watchman_machine_identifiers": 12,
     "machine_identifiers": 7,
