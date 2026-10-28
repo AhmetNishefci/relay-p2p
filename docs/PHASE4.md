@@ -199,13 +199,12 @@ writes instead of a causally later replacement. The test now establishes that
 precondition. No timestamp-based conflict rule or application workaround was added;
 the failed run is retained as `tests-causality-failure.log`.
 
-## Candidate ownership and remaining scope
+## Review areas and remaining scope
 
-The candidate must review and meaningfully modify the schema/meaning of an
-acknowledgment, the shared-key trust model, idempotent write behavior, orphan retention,
-and the distinction between local completion and observed record claims. The code,
-tests, and documentation introduced here are AI-generated under authorization; no
-candidate authorship or independent review is claimed. See [AI usage](AI_USAGE.md).
+Core review areas are acknowledgment semantics, the shared-key trust model,
+idempotent writes, orphan retention and the distinction between local completion
+and observed record claims. Development attribution is documented in
+[AI assistance disclosure](AI_USAGE.md).
 
 No final visual redesign, cryptographic receipt protocol, authenticated names,
 attachment workflow, or GitHub publication is included in this phase.

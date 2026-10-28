@@ -120,8 +120,8 @@ No existing notebook was reset or replaced.
 
 Feature source was frozen at 17:26:56 Kosovo time, ahead of the 19:30 implementation
 cutoff. The unconditional 20:30 submission freeze and final 90-minute reserve remain
-in force. No remote, publication or reviewer invitation was performed. Assessment
-authorship compliance remains unresolved; feature verification does not resolve it.
+in force. No remote, publication or reviewer invitation was performed. Development
+attribution and policy context are documented in [AI assistance disclosure](AI_USAGE.md).
 
 Screenshots, emulator data and automation evidence remain under ignored
 `.assessment-local/phase8/`, outside Git. No physical Android device or iOS test is

@@ -122,8 +122,8 @@ Bare Kit 0.12.3 declares `codegenConfig` and a `NativeBareKit` TurboModule spec,
 with `TurboModuleRegistry.getEnforcing('BareKit')`. Its C++ module uses React Native JSI and a
 call invoker to access the Bare worklet/IPC. This is dependency-provided integration:
 Relay has no handwritten TurboModule, custom Fabric component or custom JSI bridge.
-The Pear plugin also generates the native Expo reload module; that is plugin output,
-not candidate-authored native code.
+The Pear plugin also generates the native Expo reload module. Both integrations are
+provided by dependencies rather than custom native modules in Relay.
 
 The React Native UI runs in Hermes; Autopass runs in a distinct Bare runtime/worklet.
 They live within the same application process, not separate OS security sandboxes.

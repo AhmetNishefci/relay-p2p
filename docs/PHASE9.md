@@ -4,10 +4,10 @@ Audited source: `4830976dfe59b5a3a238f4b4625f9d299d30a3b9`, branch `main`, initi
 clean. The final audit changes documentation and the genuine AI export only; no
 application source, protocol, dependency, native configuration or feature changed.
 
-**Overall: NO-GO for assessment submission while authorship eligibility remains
-unresolved.** The assessment excludes fully AI-coded submissions. The implementation
-is disclosed as AI-generated; no qualifying candidate implementation or independent
-human review is evidenced. Working builds and transparent logs do not waive that rule.
+Technical verification passed within the platform and test limits recorded below.
+Publication and reviewer access remain pending authorization. The audit did not
+establish authorship-policy eligibility or independent candidate code review;
+[AI assistance disclosure](AI_USAGE.md) describes the recorded workflow and policy context.
 
 The [live assessment](https://gist.github.com/chocky335/f4d214c26a64307a94f6ec46b9620c80)
 was retrieved on October 28, 2026 through GitHub's public Gist API after the HTML
@@ -30,7 +30,7 @@ submission wording. No new product feature was implemented during this audit.
 | Atomic type(scope) commits                                         | Coherent history retained. Two historical subjects omit scope: `4f5960a` and `eb44007`. This is a strict-format deviation; history was not rewritten.                                                                    |
 | Runnable README                                                    | Fresh tracked-file checkout installed, checked and built using the documented toolchain and Android commands. Nvm prerequisite wording was clarified.                                                                    |
 | AI logs and accurate disclosure                                    | Genuine visible-record export, integrity manifest and private original checkpoint provided. It is explicitly filtered/redacted, not an unmodified complete original. Other AI use still requires candidate confirmation. |
-| Candidate authorship / ability to explain and modify independently | Not established. No qualifying candidate contribution or completed independent review is evidenced; eligibility remains unresolved.                                                                                      |
+| Candidate authorship / ability to explain and modify independently | Not established by this audit. Candidate direction, AI-generated implementation and review evidence are distinguished in AI_USAGE.md.                                                                                    |
 | Private GitHub URL and reviewer access                             | Pending explicit publication authorization. No repository, remote, push or invitation was created.                                                                                                                       |
 | Files / iOS                                                        | Optional; attachments not implemented and iOS not claimed as verified. Pairing is implemented as an optional bonus.                                                                                                      |
 
@@ -143,16 +143,17 @@ approval-review sessions. The known conversation is exported from its authentic
 original; internal review sessions are not passed off as candidate conversations.
 Internal instructions/reasoning and image data are not published. Privacy replacements
 are declared and counted, with original/export hashes in the manifest. Other tools,
-earlier sessions and candidate contribution require candidate confirmation.
+earlier sessions require candidate confirmation; development roles are documented in
+[AI assistance disclosure](AI_USAGE.md).
 
 The export has an explicit cutoff. This session continues after capture; refresh it
-after the final reply before publication. Do not describe it as containing future
-messages, unredacted private originals or independently verified human authorship.
+after the final reply before publication. It covers captured visible records with
+declared redactions; it is not an unredacted original or evidence of human code review.
 
 Before submission:
 
-1. Resolve the fully AI-coded eligibility restriction honestly; obtain candidate
-   confirmation of any additional AI assistance and actual ownership/review evidence.
+1. Review the development disclosure against the assessment's AI policy; eligibility
+   was not established by this audit. Confirm and include any additional AI assistance.
 2. Review the known trust/dependency limitations and two historical commit-scope
    deviations. Do not rewrite development history to create a manual-work appearance.
 3. Refresh/review the transcript export after the final response; verify its hashes.

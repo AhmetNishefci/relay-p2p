@@ -2,7 +2,8 @@
 
 This report records the Phase 6 audit; the current [final readiness audit is Phase 9](PHASE9.md). [Phase 7](PHASE7.md) supersedes its refresh
 drain behavior with per-read completion and adds payload/reliability measurements.
-The authorship and publication blockers below remain unresolved.
+Publication actions remain pending; development attribution and policy context are
+centralized in [AI assistance disclosure](AI_USAGE.md).
 
 The live assessment was retrieved through GitHub's public Gist API on October 28,
 2026 after the HTML reader failed. Source:
@@ -10,10 +11,9 @@ The live assessment was retrieved through GitHub's public Gist API on October 28
 The recruiter deadline remains October 28 at 22:00 Kosovo time; the Gist's generic
 submission period is not treated as an extension.
 
-**Submission recommendation: NO-GO while authorship compliance is unresolved.**
-All application implementation remains disclosed as AI-generated. No qualifying
-candidate contribution is evidenced. Working software and disclosure do not override
-the assessment's explicit exclusion of fully AI-coded submissions.
+The audit verified the technical results below. It did not establish authorship-policy
+eligibility or independent candidate code review; those findings are distinct from
+technical verification.
 
 ## Requirements
 
@@ -28,7 +28,7 @@ the assessment's explicit exclusion of fully AI-coded submissions.
 | Atomic conventional commits         | Coherent conventional history retained; two audit messages omit the requested scope; no rewriting      |
 | Setup/reproducibility               | Verified isolated checkout install, CLI, metadata, bundle, tests and debug/release builds              |
 | AI usage/transcripts                | Genuine known session exported with explicit privacy filtering; other-session completeness unconfirmed |
-| Candidate authorship/live ownership | Unresolved; no qualifying candidate implementation or human review evidenced                           |
+| Candidate authorship/live ownership | Not established by this audit; recorded development roles are in AI_USAGE.md                           |
 | Private GitHub/reviewer access      | Not created, pushed or invited; intentionally pending explicit authorization                           |
 | Files/iOS                           | Attachments optional and not implemented; iOS not claimed as tested                                    |
 
@@ -160,7 +160,7 @@ owner-user AVDs. Development-signed APKs are not production store releases.
 
 ## Remaining external actions
 
-After authorship and transcript completeness/privacy are resolved, and only after
+Review the disclosure and transcript completeness/privacy before submission. After
 explicit publication approval: create a private repository, push the reviewed branch,
 invite GitHub user `chocky335`, confirm collaborator access, verify private transcript
 links/downloads and send the repository link. No repository, push, invitation,

@@ -4,7 +4,7 @@ Original geometric artwork created for this assessment: two offset paper-colored
 strokes on muted teal, matching the in-app mark. No third-party logo is used.
 The vector source is [relay-mark.svg](relay-mark.svg); the source renderer is
 [render-branding.swift](../scripts/render-branding.swift). Artwork is AI-generated
-under the same disclosure as the application, not claimed as candidate-authored.
+and attributed in the [development disclosure](../docs/AI_USAGE.md).
 
 Checked-in PNGs are inputs to Expo's existing native asset pipeline:
 

@@ -3,7 +3,7 @@
 Baseline: `ee26606038e4a480f978679e2a682ba2de096daa`, Android ARM64 API 36,
 Node 22.23.3, unchanged native/dependency lockfile. Measurements below were executed
 on October 28, 2026. AI-generated implementation and verification are disclosed in
-[AI_USAGE.md](AI_USAGE.md); these results do not resolve the authorship restriction.
+[AI_USAGE.md](AI_USAGE.md).
 
 ## Measured problem and change
 

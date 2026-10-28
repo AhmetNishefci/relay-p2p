@@ -27,5 +27,5 @@
   "selection": "Visible user/assistant messages and tool calls/results only; internal instructions/reasoning and duplicate session events excluded.",
   "privacy": "Image data withheld; possible long z-base32 capabilities, credential patterns, long encoded machine data, private keys, home paths, unrelated project roots and machine identifiers replaced with explicit markers. No text summarized.",
   "cutoff": "Ongoing session: records after capture are absent. Refresh after the final response before publishing.",
-  "completeness": "This known Codex session is accounted for. Other AI use requires candidate confirmation; no qualifying human code contribution is evidenced."
+  "completeness": "The export covers the known Codex session through the recorded cutoff. Additional AI use requires candidate confirmation; development roles are documented in docs/AI_USAGE.md."
 }

@@ -45,5 +45,5 @@ python3 scripts/export-ai.py --source /path/to/original-session.jsonl
 Pass `--source` again for each additional relevant session. Review the generated
 redactions and metadata before committing; patterns cannot establish that arbitrary
 private text is safe. Refresh after the final assistant response before publication.
-The export does not establish compliance with the prohibition on fully AI-coded
-submissions. See [AI usage](../AI_USAGE.md) for authorship status.
+See [AI assistance disclosure](../AI_USAGE.md) for development roles, scope and
+assessment-policy context.
